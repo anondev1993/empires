@@ -1,0 +1,5 @@
+%lang starknet
+
+from starkware.cairo.common.cairo_builtins import HashBuiltin
+
+const TAX_PRECISION = 10 ** 4;
