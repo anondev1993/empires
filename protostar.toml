@@ -5,6 +5,11 @@ protostar_version = "0.4.2"
 libs_path = "lib"
 
 ["protostar.contracts"]
-main = [
-    "src/main.cairo",
+empire = [
+    "contracts/empire.cairo",
+]
+
+["protostar.test"]
+cairo-path = [
+    "./tests/"
 ]
