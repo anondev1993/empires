@@ -9,7 +9,19 @@ func realms(realm_id: felt) -> (realm: Realm) {
 }
 
 @storage_var
+func lords(lord: felt) -> (realms: felt) {
+}
+
+@storage_var
 func realm_contract() -> (address: felt) {
+}
+
+@storage_var
+func game_contract() -> (address: felt) {
+}
+
+@storage_var
+func lords_contract() -> (address: felt) {
 }
 
 @storage_var
@@ -22,4 +34,12 @@ func attacker_taxes() -> (taxes: felt) {
 
 @storage_var
 func goblin_taxes() -> (taxes: felt) {
+}
+
+@storage_var
+func is_enemy(realm_id: felt) -> (is_enemy: felt) {
+}
+
+@storage_var
+func bounties(realm_id: felt) -> (amount: felt) {
 }
