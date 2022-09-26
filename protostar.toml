@@ -11,5 +11,6 @@ empire = [
 
 ["protostar.test"]
 cairo-path = [
-    "./tests/"
+    "./tests/",
+    "./lib/cairo_contracts_git/src",
 ]
