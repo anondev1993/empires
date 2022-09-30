@@ -7,3 +7,6 @@
 [submodule "argent_contracts_starknet_git"]
 	url = https://github.com/argentlabs/argent-contracts-starknet.git
 	path = lib/argent_contracts_starknet_git
+[submodule "JediSwap_git"]
+	url = https://github.com/jediswaplabs/JediSwap.git
+	path = lib/JediSwap_git
