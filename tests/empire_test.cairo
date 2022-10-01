@@ -18,7 +18,7 @@ from contracts.empires.constants import (
     INITIATE_COMBAT_SELECTOR,
     EXECUTE_ENTRYPOINT,
 )
-from contracts.empires.internals import hash_array
+from contracts.empires.internals import _hash_array
 
 from tests.data.add_empire_enemy_data import (
     SENDER,
@@ -163,11 +163,11 @@ func test_verify_ecdsa_signature{
 
     // hash calldata
     tempvar call_data_arr: felt* = new (1, REALMS_CONTRACT, INITIATE_COMBAT_SELECTOR, 0, 6, 6, ATTACKING_ARMY_ID, ATTACKING_REALM_ID, 0, DEFENDING_ARMY_ID, DEFENDING_REALM_ID, 0, NONCE, 13);
-    let arr_hash = hash_array(data_len=14, data=call_data_arr, hash=0);
+    let arr_hash = _hash_array(data_len=14, data=call_data_arr, hash=0);
 
     // tx hash
     tempvar tx_hash: felt* = new (INVOKE, VERSION, SENDER, EXECUTE_ENTRYPOINT, arr_hash, MAX_FEE, GOERLI, 7);
-    let hash = hash_array(data_len=8, data=tx_hash, hash=0);
+    let hash = _hash_array(data_len=8, data=tx_hash, hash=0);
 
     verify_ecdsa_signature(message=hash, public_key=PUBLIC_KEY, signature_r=R, signature_s=S);
 
@@ -250,10 +250,10 @@ func test_add_empire_enemy{
     // generate hash message
     // hash calldata
     tempvar calldata_arr: felt* = new (1, realm, INITIATE_COMBAT_SELECTOR, 0, 6, 6, ATTACKING_ARMY_ID, ATTACKING_REALM_ID, 0, DEFENDING_ARMY_ID, DEFENDING_REALM_ID, 0, NONCE, 13);
-    let calldata_hash = hash_array(data_len=14, data=calldata_arr, hash=0);
+    let calldata_hash = _hash_array(data_len=14, data=calldata_arr, hash=0);
     // tx hash
     tempvar tx_hash: felt* = new (INVOKE, VERSION, address, EXECUTE_ENTRYPOINT, calldata_hash, MAX_FEE, GOERLI, 7);
-    let hash = hash_array(data_len=8, data=tx_hash, hash=0);
+    let hash = _hash_array(data_len=8, data=tx_hash, hash=0);
 
     // sign the transaction
     local signed_msg;
@@ -288,4 +288,8 @@ func test_add_empire_enemy{
         s,
     );
     return ();
+}
+
+@external
+func test_issue_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 }
