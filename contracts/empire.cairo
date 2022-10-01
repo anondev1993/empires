@@ -17,7 +17,7 @@ from contracts.empires.constants import (
     INVOKE,
     VERSION,
 )
-from contracts.empires.internals import hash_array, check_empire_funds
+from contracts.empires.internals import _hash_array, _check_empire_funds
 from contracts.empires.storage import (
     realms,
     lords,
