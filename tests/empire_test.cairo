@@ -7,7 +7,7 @@ from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.signature import verify_ecdsa_signature
 
-from contracts.empire import delegate, add_empire_enemy
+from contracts.empire import delegate, add_empire_enemy, issue_bounty
 from contracts.empires.storage import is_enemy, realms, lords
 from contracts.empires.structures import Realm
 from contracts.empires.constants import (
@@ -36,6 +36,7 @@ from tests.data.add_empire_enemy_data import (
 
 const EMPEROR = 123456;
 const ACCOUNT = 1;
+const AMOUNT = 10000;
 const GAME_CONTRACT = 12345;
 const REALM_CONTRACT = 123;
 const LORDS_CONTRACT = 123456789;
@@ -62,6 +63,9 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (local address) = get_contract_address();
     %{
         context.self_address = ids.address 
+        context.lord_contract = deploy_contract("./tests/ERC20/ERC20Mintable.cairo", [0, 0, 6, ids.AMOUNT, 0, ids.address, ids.address]).contract_address
+        store(context.self_address, "lords_contract", [context.lord_contract])
+        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
         context.realm_contract_address = deploy_contract("./tests/ERC721/ERC721MintableBurnable.cairo", [0, 0, ids.ACCOUNT]).contract_address
     %}
     return ();
@@ -291,5 +295,35 @@ func test_add_empire_enemy{
 }
 
 @external
+func test_issue_bounty_revert_zero_address{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    %{ expect_revert("Ownable: caller is the zero address") %}
+    issue_bounty(1, 100);
+    return ();
+}
+
+@external
+func test_issue_bounty_revert_not_emperor{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    %{
+        start_prank(ids.ACCOUNT)
+        expect_revert("Ownable: caller is not the owner")
+    %}
+    issue_bounty(1, 100);
+    return ();
+}
+
+@external
 func test_issue_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    %{ start_prank(ids.EMPEROR) %}
+    const enemy_realm_id = 1;
+    const BOUNTY = 100;
+    issue_bounty(enemy_realm_id, BOUNTY);
+    %{
+        bounty = load(context.self_address, "bounties", "felt", key=[ids.enemy_realm_id])[0]
+        assert ids.BOUNTY == bounty, f'bounty error, expected {ids.BOUNTY}, got {bounty}'
+    %}
+    return ();
 }
