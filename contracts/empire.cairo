@@ -131,11 +131,11 @@ func add_empire_enemy{
 
     // hash calldata
     tempvar calldata_arr: felt* = new (1, realm_contract_address, INITIATE_COMBAT_SELECTOR, 0, 6, 6, attacking_army_id, attacking_realm_id, 0, defending_army_id, defending_realm_id, 0, nonce, 13);
-    let calldata_hash = hash_array(data_len=14, data=calldata_arr, hash=0);
+    let calldata_hash = _hash_array(data_len=14, data=calldata_arr, hash=0);
 
     // tx hash
     tempvar tx_hash: felt* = new (INVOKE, VERSION, attacker, EXECUTE_ENTRYPOINT, calldata_hash, max_fee, GOERLI, 7);
-    let hash = hash_array(data_len=8, data=tx_hash, hash=0);
+    let hash = _hash_array(data_len=8, data=tx_hash, hash=0);
 
     // get attacker public key
     let (pub) = Account.getSigner(contract_address=attacker);
@@ -160,7 +160,7 @@ func issue_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     enemy_realm_id: felt, amount: felt
 ) {
     Ownable.assert_only_owner();
-    check_empire_funds(amount);
+    _check_empire_funds(amount);
     bounties.write(enemy_realm_id, amount);
     return ();
 }
@@ -168,13 +168,13 @@ func issue_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 // @notice: Claim the bounty on the target realm by performing combat on the
 // @notice: enemy realm
 // @dev: The attacking realm must have approved the empire contract before
-// @dev: calling attack_and_claim_bounty
+// @dev: calling hire_mercenary
 // @param: target_realm_id The target realm for the attack
 // @param: attacking_realm_id The id of the attacking realm
 // @param: attacking_army_id The id of the attacking army
 // @param: defending_realm_id The id of the defending realm
 @external
-func attack_and_claim_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     target_realm_id: felt,
     attacking_realm_id: felt,
     attacking_army_id: felt,
@@ -185,7 +185,7 @@ func attack_and_claim_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     with_attr error_message("no bounty on target realm {target_realm_id}") {
         assert_not_zero(bounty);
     }
-    check_empire_funds(bounty);
+    _check_empire_funds(bounty);
 
     let (caller) = get_caller_address();
     let (empire) = get_contract_address();
