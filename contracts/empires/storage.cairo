@@ -13,11 +13,31 @@ func lords(lord: felt) -> (realms: felt) {
 }
 
 @storage_var
-func realm_contract() -> (address: felt) {
+func building_module() -> (address: felt) {
 }
 
 @storage_var
-func game_contract() -> (address: felt) {
+func food_module() -> (address: felt) {
+}
+
+@storage_var
+func goblin_town_module() -> (address: felt) {
+}
+
+@storage_var
+func resource_module() -> (address: felt) {
+}
+
+@storage_var
+func travel_module() -> (address: felt) {
+}
+
+@storage_var
+func combat_module() -> (address: felt) {
+}
+
+@storage_var
+func realm_contract() -> (address: felt) {
 }
 
 @storage_var

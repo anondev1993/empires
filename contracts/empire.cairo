@@ -1,7 +1,7 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
-from starkware.cairo.common.math import assert_not_zero
+from starkware.cairo.common.math import assert_not_zero, assert_le
 from starkware.starknet.common.syscalls import (
     get_caller_address,
     get_contract_address,
@@ -22,8 +22,13 @@ from contracts.empires.storage import (
     realms,
     lords,
     realm_contract,
-    game_contract,
     lords_contract,
+    building_module,
+    food_module,
+    goblin_town_module,
+    resource_module,
+    travel_module,
+    combat_module,
     producer_taxes,
     attacker_taxes,
     goblin_taxes,
@@ -42,7 +47,12 @@ from src.openzeppelin.access.ownable.library import Ownable
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     emperor: felt,
     realm_contract_address: felt,
-    game_contract_address: felt,
+    building_module_: felt,
+    food_module_: felt,
+    goblin_town_module_: felt,
+    resource_module_: felt,
+    travel_module_: felt,
+    combat_module_: felt,
     lords_contract_address: felt,
     producer_taxes_: felt,
     attacker_taxes_: felt,
@@ -50,7 +60,12 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 ) {
     Ownable.initializer(emperor);
     realm_contract.write(realm_contract_address);
-    game_contract.write(game_contract_address);
+    building_module.write(building_module_);
+    food_module.write(food_module_);
+    goblin_town_module.write(goblin_town_module_);
+    resource_module.write(resource_module_);
+    travel_module.write(travel_module_);
+    combat_module.write(combat_module_);
     lords_contract.write(lords_contract_address);
     producer_taxes.write(producer_taxes_);
     attacker_taxes.write(attacker_taxes_);
@@ -83,7 +98,7 @@ func delegate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(r
     );
 
     let (ts) = get_block_timestamp();
-    realms.write(realm_id, Realm(caller, ts, ts));
+    realms.write(realm_id, Realm(caller, ts, 0, ts));
     let (lands) = lords.read(caller);
     lords.write(caller, lands + 1);
     return ();
@@ -197,9 +212,9 @@ func hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     );
 
     // attack the target of the bounty
-    let (game_contract_address) = game_contract.read();
+    let (combat_module_) = combat_module.read();
     let (result) = Combat.initiate_combat(
-        contract_address=game_contract_address,
+        contract_address=combat_module_,
         attacking_army_id=attacking_army_id,
         attacking_realm_id=Uint256(attacking_realm_id, 0),
         defending_army_id=0,
