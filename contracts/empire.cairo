@@ -31,7 +31,7 @@ from contracts.empires.storage import (
     bounties,
 )
 from contracts.empires.structures import Realm
-from contracts.settling_game.utils.constants import COMBAT_OUTCOME_ATTACKER_WINS
+from contracts.settling_game.utils.constants import CCombat
 from src.openzeppelin.token.erc721.IERC721 import IERC721
 from src.openzeppelin.token.erc20.IERC20 import IERC20
 from contracts.interfaces.account import Account
@@ -172,13 +172,9 @@ func issue_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 // @param: target_realm_id The target realm for the attack
 // @param: attacking_realm_id The id of the attacking realm
 // @param: attacking_army_id The id of the attacking army
-// @param: defending_realm_id The id of the defending realm
 @external
 func hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    target_realm_id: felt,
-    attacking_realm_id: felt,
-    attacking_army_id: felt,
-    defending_realm_id: felt,
+    target_realm_id: felt, attacking_realm_id: felt, attacking_army_id: felt
 ) -> () {
     alloc_locals;
     let (bounty) = bounties.read(target_realm_id);
@@ -192,7 +188,7 @@ func hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     let (local realm_contract_address) = realm_contract.read();
     let (lords_contract_address) = lords_contract.read();
 
-    // temporarily transfer the command of the armies of the realm to the empire
+    // temporarily transfer the command of the armies of the mercenary to the empire
     IERC721.transferFrom(
         contract_address=realm_contract_address,
         from_=caller,
@@ -207,11 +203,11 @@ func hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
         attacking_army_id=attacking_army_id,
         attacking_realm_id=Uint256(attacking_realm_id, 0),
         defending_army_id=0,
-        defending_realm_id=Uint256(defending_realm_id, 0),
+        defending_realm_id=Uint256(target_realm_id, 0),
     );
 
     // reward the bounty and return the armies of the attacking realm
-    if (result == COMBAT_OUTCOME_ATTACKER_WINS) {
+    if (result == CCombat.COMBAT_OUTCOME_ATTACKER_WINS) {
         IERC20.transfer(
             contract_address=lords_contract_address, recipient=caller, amount=Uint256(bounty, 0)
         );
