@@ -47,6 +47,8 @@ namespace IERC721 {
     }
     func ownerOf(tokenId: Uint256) -> (owner: felt) {
     }
+    func approve(approved: felt, tokenId: Uint256) {
+    }
 }
 
 @contract_interface
@@ -100,13 +102,17 @@ func test_deploy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 @external
 func setup_delegate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
+    local realm_address;
     local address;
     %{
-        start_prank(ids.ACCOUNT, target_contract_address=context.realm_contract_address)
         store(context.self_address, "realm_contract", [context.realm_contract_address])
-        ids.address = context.realm_contract_address
+        ids.realm_address = context.realm_contract_address
+        ids.address = context.self_address
     %}
-    IERC721.mint(contract_address=address, to=ACCOUNT, tokenId=Uint256(1, 0));
+    %{ stop_prank = start_prank(ids.ACCOUNT, target_contract_address=ids.realm_address) %}
+    IERC721.mint(contract_address=realm_address, to=ACCOUNT, tokenId=Uint256(1, 0));
+    IERC721.approve(contract_address=realm_address, approved=address, tokenId=Uint256(1, 0));
+    %{ stop_prank() %}
     return ();
 }
 
