@@ -7,7 +7,7 @@ from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.signature import verify_ecdsa_signature
 
-from contracts.empire import delegate, add_empire_enemy, issue_bounty
+from contracts.empire import delegate, add_empire_enemy, issue_bounty, hire_mercenary
 from contracts.empires.storage import is_enemy, realms, lords
 from contracts.empires.structures import Realm
 from contracts.empires.constants import (
@@ -36,6 +36,10 @@ from tests.data.add_empire_enemy_data import (
 
 const EMPEROR = 123456;
 const ACCOUNT = 1;
+const MERCENARY = 100;
+const REALM_MERCENARY = 100;
+const TARGET = 101;
+const REALM_TARGET = 101;
 const AMOUNT = 10000;
 const GAME_CONTRACT = 12345;
 const REALM_CONTRACT = 123;
@@ -48,6 +52,12 @@ namespace IERC721 {
     func ownerOf(tokenId: Uint256) -> (owner: felt) {
     }
     func approve(approved: felt, tokenId: Uint256) {
+    }
+}
+
+@contract_interface
+namespace IERC20 {
+    func balanceOf(account: felt) -> (balance: Uint256) {
     }
 }
 
@@ -66,9 +76,10 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     %{
         context.self_address = ids.address 
         context.lord_contract = deploy_contract("./tests/ERC20/ERC20Mintable.cairo", [0, 0, 6, ids.AMOUNT, 0, ids.address, ids.address]).contract_address
+        context.realm_contract_address = deploy_contract("./tests/ERC721/ERC721MintableBurnable.cairo", [0, 0, ids.ACCOUNT]).contract_address
+        store(context.self_address, "realm_contract", [context.realm_contract_address])
         store(context.self_address, "lords_contract", [context.lord_contract])
         store(context.self_address, "Ownable_owner", [ids.EMPEROR])
-        context.realm_contract_address = deploy_contract("./tests/ERC721/ERC721MintableBurnable.cairo", [0, 0, ids.ACCOUNT]).contract_address
     %}
     return ();
 }
@@ -105,7 +116,6 @@ func setup_delegate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     local realm_address;
     local address;
     %{
-        store(context.self_address, "realm_contract", [context.realm_contract_address])
         ids.realm_address = context.realm_contract_address
         ids.address = context.self_address
     %}
@@ -199,7 +209,6 @@ func test_add_empire_enemy_wrong_owner{
 }() {
     %{
         start_prank(ids.ACCOUNT)
-        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
         expect_revert(error_message="Ownable: caller is not the owner")
     %}
     add_empire_enemy(0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -212,7 +221,6 @@ func test_add_empire_enemy_zero_attacker{
 }() {
     %{
         start_prank(ids.EMPEROR)
-        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
         expect_revert(error_message="attacker is the zero address")
     %}
     add_empire_enemy(0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -225,7 +233,6 @@ func test_add_empire_enemy_missing_defender{
 }() {
     %{
         start_prank(ids.EMPEROR)
-        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
         expect_revert(error_message="defender not part of the empire")
     %}
     add_empire_enemy(SENDER, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -250,9 +257,7 @@ func test_add_empire_enemy{
     %{
         from starkware.crypto.signature.signature import private_to_stark_key, sign, verify
         ids.private = ids.random % PRIME//2 + 1
-        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
         store(context.self_address, "realms", [ids.ACCOUNT, 1, 1], key=[ids.DEFENDING_REALM_ID])
-        store(context.self_address, "realm_contract", [context.realm_contract_address])
         ids.realm = context.realm_contract_address
         ids.address = context.account_address
         ids.public = private_to_stark_key(ids.private)
@@ -304,7 +309,7 @@ func test_add_empire_enemy{
 func test_issue_bounty_revert_zero_address{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }() {
-    %{ expect_revert("Ownable: caller is the zero address") %}
+    %{ expect_revert(error_message="Ownable: caller is the zero address") %}
     issue_bounty(1, 100);
     return ();
 }
@@ -315,7 +320,7 @@ func test_issue_bounty_revert_not_emperor{
 }() {
     %{
         start_prank(ids.ACCOUNT)
-        expect_revert("Ownable: caller is not the owner")
+        expect_revert(error_message="Ownable: caller is not the owner")
     %}
     issue_bounty(1, 100);
     return ();
@@ -330,6 +335,110 @@ func test_issue_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     %{
         bounty = load(context.self_address, "bounties", "felt", key=[ids.enemy_realm_id])[0]
         assert ids.BOUNTY == bounty, f'bounty error, expected {ids.BOUNTY}, got {bounty}'
+    %}
+    return ();
+}
+
+@contract_interface
+namespace ICombat {
+    func initiate_combat(
+        attacking_army_id: felt,
+        attacking_realm_id: Uint256,
+        defending_army_id: felt,
+        defending_realm_id: Uint256,
+    ) -> (combat_outcome: felt) {
+    }
+    func set_combat_outcome(_outcome: felt) {
+    }
+}
+
+@external
+func setup_hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+    local realm_contract_address;
+    local address;
+    %{
+        from random import randint
+        context.amount_bounty = 100;
+
+        context.game_contract_address = deploy_contract("./tests/Combat/Combat.cairo", [0]).contract_address
+        store(context.self_address, "bounties", [context.amount_bounty], key=[ids.REALM_TARGET])
+        store(context.self_address, "game_contract", [context.game_contract_address])
+        ids.realm_contract_address = context.realm_contract_address
+        ids.address = context.self_address
+        stop_prank = start_prank(ids.ACCOUNT, target_contract_address=ids.realm_contract_address)
+    %}
+    IERC721.mint(
+        contract_address=realm_contract_address, to=MERCENARY, tokenId=Uint256(REALM_MERCENARY, 0)
+    );
+    %{
+        stop_prank()
+        stop_prank = start_prank(ids.MERCENARY, target_contract_address=ids.realm_contract_address)
+    %}
+    IERC721.approve(
+        contract_address=realm_contract_address,
+        approved=address,
+        tokenId=Uint256(REALM_MERCENARY, 0),
+    );
+    %{ stop_prank() %}
+    return ();
+}
+
+@external
+func test_hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+    local realm_contract_address;
+    local game_contract_address;
+    local lord_contract_address;
+    local address;
+    %{
+        start_prank(ids.MERCENARY, target_contract_address=context.self_address) 
+        ids.realm_contract_address = context.realm_contract_address
+        ids.game_contract_address = context.game_contract_address
+        ids.lord_contract_address = context.lord_contract
+        ids.address = context.self_address
+    %}
+    // outcome = 0
+    ICombat.set_combat_outcome(contract_address=game_contract_address, _outcome=0);
+    hire_mercenary(
+        target_realm_id=REALM_TARGET, attacking_realm_id=REALM_MERCENARY, attacking_army_id=1
+    );
+    let (balance: Uint256) = IERC20.balanceOf(
+        contract_address=lord_contract_address, account=MERCENARY
+    );
+    let (owner) = IERC721.ownerOf(
+        contract_address=realm_contract_address, tokenId=Uint256(REALM_MERCENARY, 0)
+    );
+    %{
+        assert ids.balance.low == 0, f'mercenary balance error, expected 0, got {ids.balance.low}' 
+        bounty = load(context.self_address, "bounties", "felt", key=[ids.REALM_TARGET])[0]
+        assert bounty == context.amount_bounty, f'bounty error, expected {context.amount_bounty}, got {bounty}'
+        assert ids.owner == ids.MERCENARY, f'realm owner error, expected {ids.MERCENARY}, got {owner}'
+    %}
+
+    // outcome = 1
+    %{ stop_prank = start_prank(ids.MERCENARY, target_contract_address=context.realm_contract_address) %}
+    IERC721.approve(
+        contract_address=realm_contract_address,
+        approved=address,
+        tokenId=Uint256(REALM_MERCENARY, 0),
+    );
+    %{ stop_prank() %}
+    ICombat.set_combat_outcome(contract_address=game_contract_address, _outcome=1);
+    hire_mercenary(
+        target_realm_id=REALM_TARGET, attacking_realm_id=REALM_MERCENARY, attacking_army_id=1
+    );
+    let (balance: Uint256) = IERC20.balanceOf(
+        contract_address=lord_contract_address, account=MERCENARY
+    );
+    let (owner) = IERC721.ownerOf(
+        contract_address=realm_contract_address, tokenId=Uint256(REALM_MERCENARY, 0)
+    );
+    %{
+        assert ids.balance.low == context.amount_bounty, f'mercenary balance error, expected {context.amount_bounty}, got {ids.balance.low}' 
+        bounty = load(context.self_address, "bounties", "felt", key=[ids.REALM_TARGET])[0]
+        assert bounty == 0, f'bounty error, expected 0, got {bounty}'
+        assert ids.owner == ids.MERCENARY, f'realm owner error, expected {ids.MERCENARY}, got {owner}'
     %}
     return ();
 }
