@@ -41,7 +41,12 @@ const REALM_MERCENARY = 100;
 const TARGET = 101;
 const REALM_TARGET = 101;
 const AMOUNT = 10000;
-const GAME_CONTRACT = 12345;
+const COMBAT_MODULE = 12345;
+const BUILDING_MODULE = COMBAT_MODULE - 1;
+const FOOD_MODULE = BUILDING_MODULE - 1;
+const GOBLIN_TOWN_MODULE = FOOD_MODULE - 1;
+const RESOURCE_MODULE = GOBLIN_TOWN_MODULE - 1;
+const TRAVEL_MODULE = RESOURCE_MODULE - 1;
 const REALM_CONTRACT = 123;
 const LORDS_CONTRACT = 123456789;
 
@@ -94,9 +99,17 @@ func test_deploy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         goblin_taxes = randint(1, ids.TAX_PRECISION)
         # deploy the empire contract
         address = deploy_contract("./contracts/empire.cairo", 
-                    [ids.EMPEROR, ids.REALM_CONTRACT, ids.GAME_CONTRACT, ids.LORDS_CONTRACT, producer_taxes, attacker_taxes, goblin_taxes]).contract_address
+                    [ids.EMPEROR, ids.REALM_CONTRACT, ids.BUILDING_MODULE, ids.FOOD_MODULE,
+                    ids.GOBLIN_TOWN_MODULE, ids.RESOURCE_MODULE, ids.TRAVEL_MODULE, ids.COMBAT_MODULE,
+                    ids.LORDS_CONTRACT, producer_taxes, attacker_taxes, goblin_taxes]).contract_address
         owner = load(address, "Ownable_owner", "felt")[0]
         add = load(address, "realm_contract", "felt")[0]
+        building = load(address, "building_module", "felt")[0]
+        food = load(address, "food_module", "felt")[0]
+        goblin_town = load(address, "goblin_town_module", "felt")[0]
+        resource = load(address, "resource_module", "felt")[0]
+        travel = load(address, "travel_module", "felt")[0]
+        combat = load(address, "combat_module", "felt")[0]
         p_taxes = load(address, "producer_taxes", "felt")[0]
         a_taxes = load(address, "attacker_taxes", "felt")[0]
         g_taxes = load(address, "goblin_taxes", "felt")[0]
@@ -104,8 +117,14 @@ func test_deploy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         assert owner == ids.EMPEROR, f'contract emperor error, expected {ids.EMPEROR}, got {owner}'
         assert add == ids.REALM_CONTRACT, f'contract address error, expected {ids.REALM_CONTRACT}, got {add}'
         assert p_taxes == producer_taxes, f'producer taxes error, expected {producer_taxes}, got {p_taxes}'
-        assert a_taxes == attacker_taxes, f'contract emperor error, expected {attacker_taxes}, got {a_taxes}'
-        assert g_taxes == goblin_taxes, f'contract emperor error, expected {goblin_taxes}, got {g_taxes}'
+        assert a_taxes == attacker_taxes, f'attacker taxes error, expected {attacker_taxes}, got {a_taxes}'
+        assert g_taxes == goblin_taxes, f'goblin town taxes error, expected {goblin_taxes}, got {g_taxes}'
+        assert building == ids.BUILDING_MODULE, f'building module error, expected {ids.BUILDING_MODULE}, got {building}'
+        assert food == ids.FOOD_MODULE, f'food module error, expected {ids.FOOD_MODULE}, got {food}'
+        assert goblin_town == ids.GOBLIN_TOWN_MODULE, f'goblin town module error, expected {ids.GOBLIN_TOWN_MODULE}, got {goblin_town}'
+        assert resource == ids.RESOURCE_MODULE, f'resource module error, expected {ids.RESOURCE_MODULE}, got {resource}'
+        assert travel == ids.TRAVEL_MODULE, f'travel module error, expected {ids.TRAVEL_MODULE}, got {travel}'
+        assert combat == ids.COMBAT_MODULE, f'combat module error, expected {ids.COMBAT_MODULE}, got {combat}'
     %}
     return ();
 }
@@ -361,9 +380,9 @@ func setup_hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         from random import randint
         context.amount_bounty = 100;
 
-        context.game_contract_address = deploy_contract("./tests/Combat/Combat.cairo", [0]).contract_address
+        context.combat_module = deploy_contract("./tests/Combat/Combat.cairo", [0]).contract_address
         store(context.self_address, "bounties", [context.amount_bounty], key=[ids.REALM_TARGET])
-        store(context.self_address, "game_contract", [context.game_contract_address])
+        store(context.self_address, "combat_module", [context.combat_module])
         ids.realm_contract_address = context.realm_contract_address
         ids.address = context.self_address
         stop_prank = start_prank(ids.ACCOUNT, target_contract_address=ids.realm_contract_address)
@@ -388,18 +407,18 @@ func setup_hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 func test_hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
     local realm_contract_address;
-    local game_contract_address;
+    local combat_module;
     local lord_contract_address;
     local address;
     %{
         start_prank(ids.MERCENARY, target_contract_address=context.self_address) 
         ids.realm_contract_address = context.realm_contract_address
-        ids.game_contract_address = context.game_contract_address
+        ids.combat_module = context.combat_module
         ids.lord_contract_address = context.lord_contract
         ids.address = context.self_address
     %}
     // outcome = 0
-    ICombat.set_combat_outcome(contract_address=game_contract_address, _outcome=0);
+    ICombat.set_combat_outcome(contract_address=combat_module, _outcome=0);
     hire_mercenary(
         target_realm_id=REALM_TARGET, attacking_realm_id=REALM_MERCENARY, attacking_army_id=1
     );
@@ -424,7 +443,7 @@ func test_hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         tokenId=Uint256(REALM_MERCENARY, 0),
     );
     %{ stop_prank() %}
-    ICombat.set_combat_outcome(contract_address=game_contract_address, _outcome=1);
+    ICombat.set_combat_outcome(contract_address=combat_module, _outcome=1);
     hire_mercenary(
         target_realm_id=REALM_TARGET, attacking_realm_id=REALM_MERCENARY, attacking_army_id=1
     );
