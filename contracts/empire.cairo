@@ -119,7 +119,7 @@ func start_release_period{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     with_attr error_message("calling lord does not own this realm") {
         assert caller = realm.lord;
     }
-    with_attr error_message("realm already recalled") {
+    with_attr error_message("realm already on release period") {
         assert realm.exiting = 0;
     }
 
@@ -143,6 +143,9 @@ func leave_empire{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     }
     with_attr error_message("calling lord does not own this realm") {
         assert caller = realm.lord;
+    }
+    with_attr error_message("realm not on release period") {
+        assert realm.exiting = 1;
     }
     let (ts) = get_block_timestamp();
     with_attr error_message("release period not completed") {
