@@ -104,6 +104,68 @@ func delegate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(r
     return ();
 }
 
+// @notice Starts the release period for the delegated realm
+// @param realm_id The id of the exiting realm
+@external
+func start_release_period{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    realm_id: felt
+) {
+    let (caller) = get_caller_address();
+    let (realm: Realm) = realms.read(realm_id);
+
+    with_attr error_message("calling lord is the zero address") {
+        assert_not_zero(caller);
+    }
+    with_attr error_message("calling lord does not own this realm") {
+        assert caller = realm.lord;
+    }
+    with_attr error_message("realm already recalled") {
+        assert realm.exiting = 0;
+    }
+
+    let (ts) = get_block_timestamp();
+    realms.write(
+        realm_id, Realm(realm.lord, realm.annexation_date, 1, release_date=ts + 24 * 3600)
+    );
+
+    return ();
+}
+
+// @notice Allows the realm to leave the empire if it has done its release period
+// @param realm_id The id of the leaving realm
+@external
+func leave_empire{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(realm_id: felt) {
+    let (caller) = get_caller_address();
+    let (realm: Realm) = realms.read(realm_id);
+
+    with_attr error_message("calling lord is the zero address") {
+        assert_not_zero(caller);
+    }
+    with_attr error_message("calling lord does not own this realm") {
+        assert caller = realm.lord;
+    }
+    let (ts) = get_block_timestamp();
+    with_attr error_message("release period not completed") {
+        assert_le(realm.release_date, ts);
+    }
+
+    let (empire) = get_contract_address();
+    let (realm_contract_address) = realm_contract.read();
+
+    IERC721.transferFrom(
+        contract_address=realm_contract_address,
+        from_=empire,
+        to=caller,
+        tokenId=Uint256(realm_id, 0),
+    );
+
+    realms.write(realm_id, Realm(0, 0, 0, 0));
+    let (lands) = lords.read(caller);
+    lords.write(caller, lands - 1);
+
+    return ();
+}
+
 // @notice: add a realm as an enemy of the empire
 // @dev: this function will check that an init_combat transaction
 // @dev: was created by another realm owner on a realm of the empire
