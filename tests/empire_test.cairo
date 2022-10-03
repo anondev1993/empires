@@ -7,7 +7,14 @@ from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.signature import verify_ecdsa_signature
 
-from contracts.empire import delegate, add_empire_enemy, issue_bounty, hire_mercenary
+from contracts.empire import (
+    delegate,
+    add_empire_enemy,
+    issue_bounty,
+    hire_mercenary,
+    start_release_period,
+    leave_empire,
+)
 from contracts.empires.storage import is_enemy, realms, lords
 from contracts.empires.structures import Realm
 from contracts.empires.constants import (
@@ -459,5 +466,49 @@ func test_hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         assert bounty == 0, f'bounty error, expected 0, got {bounty}'
         assert ids.owner == ids.MERCENARY, f'realm owner error, expected {ids.MERCENARY}, got {owner}'
     %}
+    return ();
+}
+
+@external
+func test_start_release_period_zero{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    %{ expect_revert(error_message="calling lord is the zero address") %}
+    start_release_period(realm_id=REALM_TARGET);
+    return ();
+}
+
+@external
+func test_start_release_period_not_owned{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    %{
+        start_prank(ids.ACCOUNT)
+        expect_revert(error_message="calling lord does not own this realm")
+    %}
+    start_release_period(realm_id=REALM_TARGET);
+    return ();
+}
+
+@external
+func test_start_release_period_recalled{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    %{
+        start_prank(ids.ACCOUNT)
+        store(context.self_address, "realms", [ids.ACCOUNT, 0, 1, 0], key=[ids.REALM_TARGET])
+        expect_revert(error_message="realm already recalled")
+    %}
+    start_release_period(realm_id=REALM_TARGET);
+    return ();
+}
+
+@external
+func test_start_release_period{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    %{
+        start_prank(ids.ACCOUNT)
+        store(context.self_address, "realms", [ids.ACCOUNT, 0, 0, 0], key=[ids.REALM_TARGET])
+    %}
+    start_release_period(realm_id=REALM_TARGET);
     return ();
 }
