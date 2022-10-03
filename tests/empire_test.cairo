@@ -56,6 +56,7 @@ const RESOURCE_MODULE = GOBLIN_TOWN_MODULE - 1;
 const TRAVEL_MODULE = RESOURCE_MODULE - 1;
 const REALM_CONTRACT = 123;
 const LORDS_CONTRACT = 123456789;
+const BLOCK_TS = 100;
 
 @contract_interface
 namespace IERC721 {
@@ -491,13 +492,13 @@ func test_start_release_period_not_owned{
 }
 
 @external
-func test_start_release_period_recalled{
+func test_start_release_period_already{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }() {
     %{
         start_prank(ids.ACCOUNT)
         store(context.self_address, "realms", [ids.ACCOUNT, 0, 1, 0], key=[ids.REALM_TARGET])
-        expect_revert(error_message="realm already recalled")
+        expect_revert(error_message="realm already on release period")
     %}
     start_release_period(realm_id=REALM_TARGET);
     return ();
@@ -510,5 +511,81 @@ func test_start_release_period{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
         store(context.self_address, "realms", [ids.ACCOUNT, 0, 0, 0], key=[ids.REALM_TARGET])
     %}
     start_release_period(realm_id=REALM_TARGET);
+    return ();
+}
+
+@external
+func test_leave_empire_zero{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    %{ expect_revert(error_message="calling lord is the zero address") %}
+    leave_empire(realm_id=REALM_TARGET);
+    return ();
+}
+
+@external
+func test_leave_empire_not_owned{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) {
+    %{
+        start_prank(ids.ACCOUNT)
+        expect_revert(error_message="calling lord does not own this realm")
+    %}
+    leave_empire(realm_id=REALM_TARGET);
+    return ();
+}
+
+@external
+func test_leave_empire_not_release{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) {
+    %{
+        start_prank(ids.ACCOUNT)
+        store(context.self_address, "realms", [ids.ACCOUNT, 0, 0, 0], key=[ids.REALM_TARGET])
+        expect_revert(error_message="realm not on release period")
+    %}
+    leave_empire(realm_id=REALM_TARGET);
+    return ();
+}
+
+@external
+func test_leave_empire_not_completed{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    %{
+        start_prank(ids.ACCOUNT)
+        warp(ids.BLOCK_TS)
+        store(context.self_address, "realms", [ids.ACCOUNT, 0, 1, ids.BLOCK_TS+1], key=[ids.REALM_TARGET])
+        expect_revert(error_message="release period not completed")
+    %}
+    leave_empire(realm_id=REALM_TARGET);
+    return ();
+}
+
+@external
+func setup_leave_empire{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+    local realm_contract_address;
+    local address;
+    %{
+        ids.realm_contract_address = context.realm_contract_address 
+        ids.address = context.self_address
+        stop_prank = start_prank(ids.ACCOUNT, target_contract_address=ids.realm_contract_address)
+    %}
+    IERC721.mint(
+        contract_address=realm_contract_address, to=address, tokenId=Uint256(REALM_TARGET, 0)
+    );
+    %{ stop_prank() %}
+    return ();
+}
+
+@external
+func test_leave_empire{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    %{
+        start_prank(ids.ACCOUNT)
+        warp(ids.BLOCK_TS)
+        store(context.self_address, "realms", [ids.ACCOUNT, 0, 1, ids.BLOCK_TS-1], key=[ids.REALM_TARGET])
+    %}
+    leave_empire(realm_id=REALM_TARGET);
+    %{
+        realm = load(context.self_address, "realms", "Realm", key=[ids.REALM_TARGET])
+        assert realm == [0, 0, 0, 0]
+    %}
     return ();
 }
