@@ -8,3 +8,8 @@ struct Realm {
     exiting: felt,
     release_date: felt,
 }
+
+struct Votes {
+    yes: felt,
+    no: felt,
+}
