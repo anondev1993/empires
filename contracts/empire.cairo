@@ -21,6 +21,7 @@ from contracts.empires.internals import _hash_array, _check_empire_funds
 from contracts.empires.storage import (
     realms,
     lords,
+    realms_count,
     realm_contract,
     lords_contract,
     building_module,
@@ -99,8 +100,12 @@ func delegate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(r
 
     let (ts) = get_block_timestamp();
     realms.write(realm_id, Realm(caller, ts, 0, ts));
+
+    // store empire information
     let (lands) = lords.read(caller);
     lords.write(caller, lands + 1);
+    let (count) = realms_count.read();
+    realms_count.write(count + 1);
     return ();
 }
 
@@ -165,6 +170,8 @@ func leave_empire{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     realms.write(realm_id, Realm(0, 0, 0, 0));
     let (lands) = lords.read(caller);
     lords.write(caller, lands - 1);
+    let (count) = realms_count.read();
+    realms_count.write(count - 1);
 
     return ();
 }
