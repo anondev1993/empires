@@ -1,7 +1,7 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
-from starkware.cairo.common.math import assert_not_zero
+from starkware.cairo.common.math import assert_not_zero, assert_le
 from starkware.starknet.common.syscalls import (
     get_caller_address,
     get_contract_address,
@@ -18,8 +18,8 @@ from contracts.empires.constants import (
     VERSION,
 )
 from contracts.empires.internals import (
-    hash_array,
-    check_empire_funds,
+    _hash_array,
+    _check_empire_funds,
     swap_lords_for_exact_eth,
     message_l1_acquire_realm,
 )
@@ -30,9 +30,15 @@ from contracts.empires.storage import (
     token_bridge_contract,
     realms,
     lords,
+    realms_count,
     realm_contract,
-    game_contract,
     lords_contract,
+    building_module,
+    food_module,
+    goblin_town_module,
+    resource_module,
+    travel_module,
+    combat_module,
     producer_taxes,
     attacker_taxes,
     goblin_taxes,
@@ -40,7 +46,7 @@ from contracts.empires.storage import (
     bounties,
 )
 from contracts.empires.structures import Realm
-from contracts.settling_game.utils.constants import COMBAT_OUTCOME_ATTACKER_WINS
+from contracts.settling_game.utils.constants import CCombat
 from src.openzeppelin.token.erc721.IERC721 import IERC721
 from src.openzeppelin.token.erc20.IERC20 import IERC20
 from contracts.interfaces.account import Account
@@ -52,7 +58,12 @@ from src.openzeppelin.access.ownable.library import Ownable
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     emperor: felt,
     realm_contract_address: felt,
-    game_contract_address: felt,
+    building_module_: felt,
+    food_module_: felt,
+    goblin_town_module_: felt,
+    resource_module_: felt,
+    travel_module_: felt,
+    combat_module_: felt,
     lords_contract_address: felt,
     eth_contract_address: felt,
     router_contract_address: felt,
@@ -64,7 +75,12 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 ) {
     Ownable.initializer(emperor);
     realm_contract.write(realm_contract_address);
-    game_contract.write(game_contract_address);
+    building_module.write(building_module_);
+    food_module.write(food_module_);
+    goblin_town_module.write(goblin_town_module_);
+    resource_module.write(resource_module_);
+    travel_module.write(travel_module_);
+    combat_module.write(combat_module_);
     lords_contract.write(lords_contract_address);
     eth_contract.write(eth_contract_address);
     router_contract.write(router_contract_address);
@@ -101,9 +117,80 @@ func delegate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(r
     );
 
     let (ts) = get_block_timestamp();
-    realms.write(realm_id, Realm(caller, ts, ts));
+    realms.write(realm_id, Realm(caller, ts, 0, ts));
+
+    // store empire information
     let (lands) = lords.read(caller);
     lords.write(caller, lands + 1);
+    let (count) = realms_count.read();
+    realms_count.write(count + 1);
+    return ();
+}
+
+// @notice Starts the release period for the delegated realm
+// @param realm_id The id of the exiting realm
+@external
+func start_release_period{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    realm_id: felt
+) {
+    let (caller) = get_caller_address();
+    let (realm: Realm) = realms.read(realm_id);
+
+    with_attr error_message("calling lord is the zero address") {
+        assert_not_zero(caller);
+    }
+    with_attr error_message("calling lord does not own this realm") {
+        assert caller = realm.lord;
+    }
+    with_attr error_message("realm already on release period") {
+        assert realm.exiting = 0;
+    }
+
+    let (ts) = get_block_timestamp();
+    realms.write(
+        realm_id, Realm(realm.lord, realm.annexation_date, 1, release_date=ts + 24 * 3600)
+    );
+
+    return ();
+}
+
+// @notice Allows the realm to leave the empire if it has done its release period
+// @param realm_id The id of the leaving realm
+@external
+func leave_empire{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(realm_id: felt) {
+    let (caller) = get_caller_address();
+    let (realm: Realm) = realms.read(realm_id);
+
+    with_attr error_message("calling lord is the zero address") {
+        assert_not_zero(caller);
+    }
+    with_attr error_message("calling lord does not own this realm") {
+        assert caller = realm.lord;
+    }
+    with_attr error_message("realm not on release period") {
+        assert realm.exiting = 1;
+    }
+    let (ts) = get_block_timestamp();
+    with_attr error_message("release period not completed") {
+        assert_le(realm.release_date, ts);
+    }
+
+    let (empire) = get_contract_address();
+    let (realm_contract_address) = realm_contract.read();
+
+    IERC721.transferFrom(
+        contract_address=realm_contract_address,
+        from_=empire,
+        to=caller,
+        tokenId=Uint256(realm_id, 0),
+    );
+
+    realms.write(realm_id, Realm(0, 0, 0, 0));
+    let (lands) = lords.read(caller);
+    lords.write(caller, lands - 1);
+    let (count) = realms_count.read();
+    realms_count.write(count - 1);
+
     return ();
 }
 
@@ -149,11 +236,11 @@ func add_empire_enemy{
 
     // hash calldata
     tempvar calldata_arr: felt* = new (1, realm_contract_address, INITIATE_COMBAT_SELECTOR, 0, 6, 6, attacking_army_id, attacking_realm_id, 0, defending_army_id, defending_realm_id, 0, nonce, 13);
-    let calldata_hash = hash_array(data_len=14, data=calldata_arr, hash=0);
+    let calldata_hash = _hash_array(data_len=14, data=calldata_arr, hash=0);
 
     // tx hash
     tempvar tx_hash: felt* = new (INVOKE, VERSION, attacker, EXECUTE_ENTRYPOINT, calldata_hash, max_fee, GOERLI, 7);
-    let hash = hash_array(data_len=8, data=tx_hash, hash=0);
+    let hash = _hash_array(data_len=8, data=tx_hash, hash=0);
 
     // get attacker public key
     let (pub) = Account.getSigner(contract_address=attacker);
@@ -178,7 +265,7 @@ func issue_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     enemy_realm_id: felt, amount: felt
 ) {
     Ownable.assert_only_owner();
-    check_empire_funds(amount);
+    _check_empire_funds(amount);
     bounties.write(enemy_realm_id, amount);
     return ();
 }
@@ -186,31 +273,27 @@ func issue_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 // @notice: Claim the bounty on the target realm by performing combat on the
 // @notice: enemy realm
 // @dev: The attacking realm must have approved the empire contract before
-// @dev: calling attack_and_claim_bounty
+// @dev: calling hire_mercenary
 // @param: target_realm_id The target realm for the attack
 // @param: attacking_realm_id The id of the attacking realm
 // @param: attacking_army_id The id of the attacking army
-// @param: defending_realm_id The id of the defending realm
 @external
-func attack_and_claim_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    target_realm_id: felt,
-    attacking_realm_id: felt,
-    attacking_army_id: felt,
-    defending_realm_id: felt,
+func hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    target_realm_id: felt, attacking_realm_id: felt, attacking_army_id: felt
 ) -> () {
     alloc_locals;
     let (bounty) = bounties.read(target_realm_id);
     with_attr error_message("no bounty on target realm {target_realm_id}") {
         assert_not_zero(bounty);
     }
-    check_empire_funds(bounty);
+    _check_empire_funds(bounty);
 
     let (caller) = get_caller_address();
     let (empire) = get_contract_address();
     let (local realm_contract_address) = realm_contract.read();
     let (lords_contract_address) = lords_contract.read();
 
-    // temporarily transfer the command of the armies of the realm to the empire
+    // temporarily transfer the command of the armies of the mercenary to the empire
     IERC721.transferFrom(
         contract_address=realm_contract_address,
         from_=caller,
@@ -219,17 +302,17 @@ func attack_and_claim_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     );
 
     // attack the target of the bounty
-    let (game_contract_address) = game_contract.read();
+    let (combat_module_) = combat_module.read();
     let (result) = Combat.initiate_combat(
-        contract_address=game_contract_address,
+        contract_address=combat_module_,
         attacking_army_id=attacking_army_id,
         attacking_realm_id=Uint256(attacking_realm_id, 0),
         defending_army_id=0,
-        defending_realm_id=Uint256(defending_realm_id, 0),
+        defending_realm_id=Uint256(target_realm_id, 0),
     );
 
     // reward the bounty and return the armies of the attacking realm
-    if (result == COMBAT_OUTCOME_ATTACKER_WINS) {
+    if (result == CCombat.COMBAT_OUTCOME_ATTACKER_WINS) {
         IERC20.transfer(
             contract_address=lords_contract_address, recipient=caller, amount=Uint256(bounty, 0)
         );

@@ -17,19 +17,19 @@ from contracts.interfaces.router import IRouter
 // @param: data The input array
 // @param: hash The hash of the input array
 // @return The hash of the input array
-func hash_array{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func _hash_array{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     data_len: felt, data: felt*, hash: felt
 ) -> felt {
     if (data_len == 0) {
         return hash;
     }
     let (_hash) = hash2{hash_ptr=pedersen_ptr}(hash, [data]);
-    return hash_array(data_len=data_len - 1, data=data + 1, hash=_hash);
+    return _hash_array(data_len=data_len - 1, data=data + 1, hash=_hash);
 }
 
 // @notice: Checks the empire as above amount of funds in $LORDS
 // @amount: amount The amount to check the funds against
-func check_empire_funds{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func _check_empire_funds{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     amount: felt
 ) {
     let (lords_contract_address) = lords_contract.read();
@@ -46,7 +46,8 @@ func check_empire_funds{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 
     // check if the empire has sufficient funds to issue this bounty
     with_attr error_message("insufficient funds for bounty") {
-        uint256_le(amount_uint256, available_funds);
+        let (res) = uint256_le(amount_uint256, available_funds);
+        assert res = 1;
     }
     return ();
 }
