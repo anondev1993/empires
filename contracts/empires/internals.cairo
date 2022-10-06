@@ -12,10 +12,10 @@ from contracts.empires.storage import lords_contract
 from src.openzeppelin.token.erc20.IERC20 import IERC20
 from contracts.interfaces.router import IRouter
 
-// @notice: Calculates the pedersen hash of the input array
-// @param: data_len The length of the input array
-// @param: data The input array
-// @param: hash The hash of the input array
+// @notice Calculates the pedersen hash of the input array
+// @param data_len The length of the input array
+// @param data The input array
+// @param hash The hash of the input array
 // @return The hash of the input array
 func _hash_array{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     data_len: felt, data: felt*, hash: felt
@@ -27,8 +27,8 @@ func _hash_array{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return _hash_array(data_len=data_len - 1, data=data + 1, hash=_hash);
 }
 
-// @notice: Checks the empire as above amount of funds in $LORDS
-// @amount: amount The amount to check the funds against
+// @notice Checks the empire as above amount of funds in $LORDS
+// @param amount The amount to check the funds against
 func _check_empire_funds{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     amount: felt
 ) {
@@ -52,12 +52,12 @@ func _check_empire_funds{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     return ();
 }
 
-// @notice: approve tokens then swaps a number of LORDS tokens for exact amount of ethereum tokens
-// @paramas router_address: address of router from jediswap
-// @params lords_token_address: address of LORDS ERC20
-// @params eth_token_address: address of ETH ERC20
-// @params max_lords_amount: max amount of LORDS tokens allowed to swap
-// @params eth_amount: exact amount of eth to retrieve
+// @notice Approve tokens then swaps a number of LORDS tokens for exact amount of ethereum tokens
+// @param router_address Address of router from jediswap
+// @param lords_token_address Address of LORDS ERC20
+// @param eth_token_address Address of ETH ERC20
+// @param max_lords_amount Max amount of LORDS tokens allowed to swap
+// @param eth_amount Exact amount of eth to retrieve
 func swap_lords_for_exact_eth{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     router_address: felt,
     lords_token_address: felt,
@@ -92,10 +92,10 @@ func swap_lords_for_exact_eth{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ra
     return (amounts_len, amounts);
 }
 
-// @notice: sends a message to L1 empire contract to buy a realm on OpenSea
-// @param l1_address: the address of the l1 empire contract
-// @param token_id: the id of the token to buy
-// @param amount: the amount in eth to spend for the token
+// @notice Sends a message to L1 empire contract to buy a realm on OpenSea
+// @param l1_address The address of the l1 empire contract
+// @param token_id The id of the token to buy
+// @param amount The amount in eth to spend for the token
 func message_l1_acquire_realm{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     l1_address: felt, token_id: felt, amount: Uint256
 ) -> () {

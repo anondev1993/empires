@@ -4,6 +4,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_caller_address, get_block_timestamp
+from src.openzeppelin.access.ownable.library import Ownable
 
 from contracts.empires.storage import (
     realms,
@@ -52,7 +53,10 @@ func start_emperor_change{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     return ();
 }
 
-// @notice
+// @notice Vote yes or no for a proposal
+// @param proposing_realm_id The id of the realm who made the proposition
+// @param realm_id The id of a realm owned by the caller
+// @param yes_or_no The vote for that proposal
 @external
 func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     proposing_realm_id: felt, realm_id: felt, yes_or_no: felt
@@ -60,7 +64,6 @@ func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let (caller) = get_caller_address();
     let (realm: Realm) = realms.read(realm_id);
 
-    // TODO check the realm hasn't voted yet
     with_attr error_message("calling lord is the zero address") {
         assert_not_zero(caller);
     }
@@ -71,7 +74,13 @@ func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
         assert [range_check_ptr] = yes_or_no;
         assert [range_check_ptr + 1] = 1 - yes_or_no;
     }
+
     let range_check_ptr = range_check_ptr + 2;
+
+    let (has_voted) = has_voted.read(proposing_realm_id, realm_id);
+    with_attr error_message("realm has already voted") {
+        assert has_voted = 0;
+    }
 
     let (votes: Votes) = voting_ledger.read(proposing_realm_id);
     let (realms_count) = realms_count.read();
@@ -95,7 +104,8 @@ func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
             _reset_voting(
                 proposing_realm_id=proposing_realm_id, length=votes.yes + votes.no, index=0
             );
-            // TODO change the emperor
+            let (emperor_candidate) = emperor_candidate.read(proposing_realm_id);
+            Ownable.transfer_ownership(emperor_candidate);
             return ();
         }
         voting_ledger.write(proposing_realm_id, Votes(votes.yes + 1, votes.no));
@@ -105,6 +115,10 @@ func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     return ();
 }
 
+// @notice Resets all the voting data related to one proposing_realm_id
+// @param proposing_realm_id The id of the realm who made the proposition
+// @param length The number of total votes for that proposal
+// @param index Starting index
 func _reset_voting{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     proposing_realm_id: felt, length: felt, index: felt
 ) {

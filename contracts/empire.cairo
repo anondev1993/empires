@@ -92,8 +92,8 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return ();
 }
 
-// @notice: Delegates the realm to the empire
-// @param: realm_id The realm id to delegate
+// @notice Delegates the realm to the empire
+// @param realm_id The realm id to delegate
 @external
 func delegate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(realm_id: felt) {
     let (caller) = get_caller_address();
@@ -194,18 +194,18 @@ func leave_empire{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     return ();
 }
 
-// @notice: add a realm as an enemy of the empire
-// @dev: this function will check that an init_combat transaction
-// @dev: was created by another realm owner on a realm of the empire
-// @param: attacker The owner of the attacker realm
-// @param: attacking_realm_id The id of the attacking realm
-// @param: attacking_army_id The id of the attacking army
-// @param: defending_realm_id The id of the defending realm
-// @param: defending_army_id The id of the defending army
-// @param: max_fee The max fee used for the attack transaction
-// @param: nonce The nonce used for the attack transaction
-// @param: r The x coordinate of the attack transaction signature
-// @param: s The y coordinate of the attack transaction signature
+// @notice add a realm as an enemy of the empire
+// @dev this function will check that an init_combat transaction
+// @dev was created by another realm owner on a realm of the empire
+// @param attacker The owner of the attacker realm
+// @param attacking_realm_id The id of the attacking realm
+// @param attacking_army_id The id of the attacking army
+// @param defending_realm_id The id of the defending realm
+// @param defending_army_id The id of the defending army
+// @param max_fee The max fee used for the attack transaction
+// @param nonce The nonce used for the attack transaction
+// @param r The x coordinate of the attack transaction signature
+// @param s The y coordinate of the attack transaction signature
 @external
 func add_empire_enemy{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, ecdsa_ptr: SignatureBuiltin*
@@ -257,9 +257,9 @@ func add_empire_enemy{
     return ();
 }
 
-// @notice: Issues an bounty on the designated realm
-// @param: enemy_realm_id The enemy realm id
-// @param: amount The amount of $LORDS used for the bounty
+// @notice Issues an bounty on the designated realm
+// @param enemy_realm_id The enemy realm id
+// @param amount The amount of $LORDS used for the bounty
 @external
 func issue_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     enemy_realm_id: felt, amount: felt
@@ -270,13 +270,13 @@ func issue_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     return ();
 }
 
-// @notice: Claim the bounty on the target realm by performing combat on the
-// @notice: enemy realm
-// @dev: The attacking realm must have approved the empire contract before
-// @dev: calling hire_mercenary
-// @param: target_realm_id The target realm for the attack
-// @param: attacking_realm_id The id of the attacking realm
-// @param: attacking_army_id The id of the attacking army
+// @notice Claim the bounty on the target realm by performing combat on the
+// @notice enemy realm
+// @dev The attacking realm must have approved the empire contract before
+// @dev calling hire_mercenary
+// @param target_realm_id The target realm for the attack
+// @param attacking_realm_id The id of the attacking realm
+// @param attacking_army_id The id of the attacking army
 @external
 func hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     target_realm_id: felt, attacking_realm_id: felt, attacking_army_id: felt
@@ -337,8 +337,8 @@ func hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 }
 
 // @notice swaps token and sends them to L1 with a message approving buying a realm on OpenSea
-// @params max_lords_amount: maximum number of lords token to swap to get an exact eth amount
-// @params: token id of the realm to buy on L1
+// @param max_lords_amount Maximum number of lords token to swap to get an exact eth amount
+// @param token_id Token id of the realm to buy on L1
 @external
 func acquire_realm_l1{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     max_lords_amount: Uint256, eth_amount: Uint256, token_id: felt
