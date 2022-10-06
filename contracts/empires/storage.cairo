@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 
-from contracts.empires.structures import Realm, Votes
+from contracts.empires.structures import Realm, Votes, Acquisition
 
 @storage_var
 func eth_contract() -> (address: felt) {
@@ -84,20 +84,37 @@ func is_enemy(realm_id: felt) -> (is_enemy: felt) {
 func bounties(realm_id: felt) -> (amount: felt) {
 }
 
-// vote system
+// vote system to elect new emperor
 
 @storage_var
 func emperor_candidate(proposing_realm_id: felt) -> (candidate: felt) {
 }
 
 @storage_var
-func voting_ledger(proposing_realm_id: felt) -> (vote: Votes) {
+func voting_ledger_emperor(proposing_realm_id: felt) -> (vote: Votes) {
 }
 
 @storage_var
-func has_voted(proposing_realm_id: felt, realm_id: felt) -> (voted: felt) {
+func has_voted_emperor(proposing_realm_id: felt, realm_id: felt) -> (voted: felt) {
 }
 
 @storage_var
-func voter_list(proposing_realm_id: felt, index: felt) -> (realm_id: felt) {
+func voter_list_emperor(proposing_realm_id: felt, index: felt) -> (realm_id: felt) {
+}
+
+// vote system to buy realms on L1
+@storage_var
+func acquisition_candidate(proposing_realm_id: felt) -> (candidate: Acquisition) {
+}
+
+@storage_var
+func voting_ledger_acquisition(proposing_realm_id: felt) -> (vote: Votes) {
+}
+
+@storage_var
+func has_voted_acquisition(proposing_realm_id: felt, realm_id: felt) -> (voted: felt) {
+}
+
+@storage_var
+func voter_list_acquisition(proposing_realm_id: felt, index: felt) -> (realm_id: felt) {
 }

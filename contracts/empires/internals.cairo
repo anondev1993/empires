@@ -97,17 +97,14 @@ func swap_lords_for_exact_eth{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ra
 // @param token_id The id of the token to buy
 // @param amount The amount in eth to spend for the token
 func message_l1_acquire_realm{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    l1_address: felt, token_id: felt, amount: Uint256
+    l1_address: felt, token_id: felt, amount: felt
 ) -> () {
-    with_attr error_message("AMOUNT TOO BIG") {
-        assert amount.high = 0;
-    }
     // 0 = buy message
     const MESSAGE = 0;
     let (message_payload: felt*) = alloc();
     assert message_payload[0] = MESSAGE;
     assert message_payload[1] = token_id;
-    assert message_payload[2] = amount.low;
+    assert message_payload[2] = amount;
 
     send_message_to_l1(to_address=l1_address, payload_size=3, payload=message_payload);
 

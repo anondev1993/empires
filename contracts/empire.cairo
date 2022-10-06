@@ -44,8 +44,9 @@ from contracts.empires.storage import (
     goblin_taxes,
     is_enemy,
     bounties,
+    acquisition_candidate,
 )
-from contracts.empires.structures import Realm
+from contracts.empires.structures import Realm, Acquisition
 from contracts.settling_game.utils.constants import CCombat
 from src.openzeppelin.token.erc721.IERC721 import IERC721
 from src.openzeppelin.token.erc20.IERC20 import IERC20
@@ -338,42 +339,54 @@ func hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
 // @notice swaps token and sends them to L1 with a message approving buying a realm on OpenSea
 // @param max_lords_amount Maximum number of lords token to swap to get an exact eth amount
-// @param token_id Token id of the realm to buy on L1
+// @param proposing_realm_id Id of the realm who made a proposition that has been passed
 @external
 func acquire_realm_l1{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    max_lords_amount: Uint256, eth_amount: Uint256, token_id: felt
+    max_lords_amount: Uint256, proposing_realm_id: felt
 ) -> () {
     alloc_locals;
     // check that the caller is the emperor
     Ownable.assert_only_owner();
 
-    // TODO: check that the eth_amount is what has been validated by the DAO members
+    // check that the realm to be acquired has been voted by the lords
+    let (acquisition: Acquisition) = acquisition_candidate.read(proposing_realm_id);
+
+    with_attr error_message("realm acquisition has not been passed by round table") {
+        assert acquisition.passed = 1;
+    }
 
     let (router_contract_address) = router_contract.read();
     let (lords_contract_address) = lords_contract.read();
     let (local eth_contract_address) = eth_contract.read();
 
     // swap tokens
+    // TODO: make sure that giving low part of Uint256 only does not create issues
     swap_lords_for_exact_eth(
         router_contract_address,
         lords_contract_address,
         eth_contract_address,
         max_lords_amount,
-        eth_amount,
+        Uint256(acquisition.eth_amount, 0),
     );
 
     let (l1_empire_contract_address) = l1_empire_contract.read();
     let (token_bridge_contract_address) = token_bridge_contract.read();
 
     // bridge token eth to l1
+    // TODO: make sure that giving low part of Uint256 only does not create issues
     ITokenBridge.initiate_withdraw(
         contract_address=token_bridge_contract_address,
         l1_recipient=l1_empire_contract_address,
-        amount=eth_amount,
+        amount=Uint256(acquisition.eth_amount, 0),
     );
 
     // send message to l1 using the send_message_to_l1() function
-    message_l1_acquire_realm(l1_empire_contract_address, token_id, eth_amount);
+    message_l1_acquire_realm(
+        l1_empire_contract_address, acquisition.token_id, acquisition.eth_amount
+    );
+
+    // delete the proposition once message has been sent
+    acquisition_candidate.write(proposing_realm_id, Acquisition(0, 0, 0));
 
     return ();
 }

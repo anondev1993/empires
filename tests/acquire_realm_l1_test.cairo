@@ -34,7 +34,7 @@ namespace ITokenBridge {
 
 @contract_interface
 namespace IEmpire {
-    func acquire_realm_l1(max_lords_amount: Uint256, eth_amount: Uint256, token_id: felt) -> () {
+    func acquire_realm_l1(max_lords_amount: Uint256, proposing_realm_id: felt) -> () {
     }
 }
 
@@ -128,11 +128,18 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     const USER_1_ADDRESS = 2222;
     const USER_2_ADDRESS = 3333;
     const EMPEROR = 4444;
-    const GAME_CONTRACT = 5555;
     const REALM_CONTRACT = 6666;
     const BRIDGE_GOVERNOR = 7777;
     const L1_ADDRESS = 8888;
     const L1_TOKEN_BRIDGE_ADDRESS = 9999;
+
+    // realms module contracts
+    const BUILDING_MODULE_ADDRESS = 5551;
+    const FOOD_MODULE_ADDRESS = 5552;
+    const GOBLIN_TOWN_MODULE_ADDRESS = 5553;
+    const RESOURCE_MODULE_ADDRESS = 5554;
+    const TRAVEL_MODULE_ADDRESS = 5555;
+    const COMBAT_MODULE_ADDRESS = 5556;
 
     local factory_address;
     local router_address;
@@ -154,7 +161,6 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         context.USER_1_ADDRESS = ids.USER_1_ADDRESS
         context.USER_2_ADDRESS = ids.USER_2_ADDRESS
         context.token_0_address = deploy_contract("lib/cairo_contracts_git/src/openzeppelin/token/erc20/presets/ERC20Mintable.cairo", [11, 1, 18, 0, 0, context.DEPLOYER_ADDRESS, context.DEPLOYER_ADDRESS]).contract_address
-        #context.token_1_address = deploy_contract("lib/cairo_contracts_git/src/openzeppelin/token/erc20/presets/ERC20Mintable.cairo", [22, 2, 18, 0, 0, context.DEPLOYER_ADDRESS, context.DEPLOYER_ADDRESS]).contract_address
         context.token_1_address = deploy_contract("tests/starkgate/ERC20Bridgeable.cairo", [22, 2, 18, context.token_bridge_address]).contract_address
         ids.token_0_address = context.token_0_address
         ids.token_1_address = context.token_1_address
@@ -170,7 +176,19 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     %{
         ## EMPIRE
         context.empire_address = deploy_contract("./contracts/empire.cairo", 
-                    [ids.EMPEROR, ids.REALM_CONTRACT, ids.GAME_CONTRACT, context.token_0_address, context.token_1_address, context.router_address, ids.L1_ADDRESS, context.token_bridge_address, 0, 0, 0]).contract_address
+                    [ids.EMPEROR,
+                     ids.REALM_CONTRACT,
+                     ids.BUILDING_MODULE_ADDRESS, 
+                     ids.FOOD_MODULE_ADDRESS,
+                     ids.GOBLIN_TOWN_MODULE_ADDRESS,
+                     ids.RESOURCE_MODULE_ADDRESS,
+                     ids.TRAVEL_MODULE_ADDRESS, 
+                     ids.COMBAT_MODULE_ADDRESS,
+                     context.token_0_address, 
+                     context.token_1_address, 
+                     context.router_address,
+                     ids.L1_ADDRESS, 
+                     context.token_bridge_address, 0, 0, 0]).contract_address
         context.EMPEROR = ids.EMPEROR
     %}
 
@@ -273,6 +291,9 @@ func test_acquire_realm_l1{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     ) {
     alloc_locals;
 
+    const PROPOSING_REALM_ID = 0001;
+    const TOKEN_ID = 0002;
+
     local token_0_address;
     local token_1_address;
     local router_address;
@@ -318,12 +339,15 @@ func test_acquire_realm_l1{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     );
     %{ stop_prank() %}
 
+    // store an proposal to acquire realm l1 that was passed by the round_table
+    %{ store(context.empire_address, "acquisition_candidate", [ids.TOKEN_ID, ids.amount_token_1, 1], key=[ids.PROPOSING_REALM_ID]) %}
+
     %{ stop_prank = start_prank(context.EMPEROR, target_contract_address=context.empire_address) %}
+
     IEmpire.acquire_realm_l1(
         contract_address=empire_address,
         max_lords_amount=Uint256(10 ** 30, 0),
-        eth_amount=Uint256(amount_token_1, 0),
-        token_id=11,
+        proposing_realm_id=PROPOSING_REALM_ID,
     );
 
     %{ stop_prank() %}

@@ -9,19 +9,21 @@ from src.openzeppelin.access.ownable.library import Ownable
 from contracts.empires.storage import (
     realms,
     emperor_candidate,
-    voting_ledger,
-    has_voted,
-    voter_list,
+    voting_ledger_emperor,
+    has_voted_emperor,
+    voter_list_emperor,
     realms_count,
 )
 from contracts.empires.structures import Votes
 from src.openzeppelin.access.ownable.library import Ownable_owner
 
-// @notice Starts the emperor voting process for one processing realm
+// TODO: test these functions
+
+// @notice Starts a new emperor voting process
 // @param new_emperor The new proposed emperor
 // @param realm_id The proposing realm
 @external
-func start_emperor_change{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func propose_emperor_change{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     new_emperor: felt, realm_id: felt
 ) {
     let (caller) = get_caller_address();
@@ -37,8 +39,8 @@ func start_emperor_change{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         assert_not_zero(new_emperor);
     }
 
-    let (votes: Votes) = voting_ledger.read(realm_id);
-    _reset_voting(proposing_realm_id=realm_id, length=votes.yes + votes.no, index=0);
+    let (votes: Votes) = voting_ledger_emperor.read(realm_id);
+    _reset_voting_emperor(proposing_realm_id=realm_id, length=votes.yes + votes.no, index=0);
 
     let (count) = realms_count.read();
     // if there is only one realm, transfer the ownership
@@ -46,9 +48,9 @@ func start_emperor_change{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         Ownable_owner.write(new_emperor);
         return ();
     }
-    voting_ledger.write(realm_id, Votes(1, 0));
-    has_voted.write(realm_id, realm_id, 1);
-    voter_list.write(realm_id, 0, realm_id);
+    voting_ledger_emperor.write(realm_id, Votes(1, 0));
+    has_voted_emperor.write(realm_id, realm_id, 1);
+    voter_list_emperor.write(realm_id, 0, realm_id);
     emperor_candidate.write(realm_id, new_emperor);
     return ();
 }
@@ -77,40 +79,40 @@ func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 
     let range_check_ptr = range_check_ptr + 2;
 
-    let (has_voted) = has_voted.read(proposing_realm_id, realm_id);
+    let (has_voted_emperor) = has_voted_emperor.read(proposing_realm_id, realm_id);
     with_attr error_message("realm has already voted") {
-        assert has_voted = 0;
+        assert has_voted_emperor = 0;
     }
 
-    let (votes: Votes) = voting_ledger.read(proposing_realm_id);
+    let (votes: Votes) = voting_ledger_emperor.read(proposing_realm_id);
     let (realms_count) = realms_count.read();
     if (yes_or_no == 0) {
         let (no_pourcentage, _) = unsigned_div_rem((votes.no + 1) * 100, realms_count);
         let (is_majority_no) = is_le(50, no_pourcentage);
         if (is_majority_no == 1) {
-            _reset_voting(
+            _reset_voting_emperor(
                 proposing_realm_id=proposing_realm_id, length=votes.yes + votes.no, index=0
             );
             return ();
         }
-        voting_ledger.write(proposing_realm_id, Votes(votes.yes, votes.no + 1));
-        has_voted.write(proposing_realm_id, realm_id, 1);
-        voter_list.write(proposing_realm_id, votes.yes + votes.no, realm_id);
+        voting_ledger_emperor.write(proposing_realm_id, Votes(votes.yes, votes.no + 1));
+        has_voted_emperor.write(proposing_realm_id, realm_id, 1);
+        voter_list_emperor.write(proposing_realm_id, votes.yes + votes.no, realm_id);
     }
     if (yes_or_no == 1) {
         let (yes_pourcentage, _) = unsigned_div_rem((votes.yes + 1) * 100, realms_count);
         let (is_majority_yes) = is_le(50, yes_pourcentage);
         if (is_majority_yes == 1) {
-            _reset_voting(
+            _reset_voting_emperor(
                 proposing_realm_id=proposing_realm_id, length=votes.yes + votes.no, index=0
             );
             let (emperor_candidate) = emperor_candidate.read(proposing_realm_id);
             Ownable.transfer_ownership(emperor_candidate);
             return ();
         }
-        voting_ledger.write(proposing_realm_id, Votes(votes.yes + 1, votes.no));
-        has_voted.write(proposing_realm_id, realm_id, 1);
-        voter_list.write(proposing_realm_id, votes.yes + votes.no, realm_id);
+        voting_ledger_emperor.write(proposing_realm_id, Votes(votes.yes + 1, votes.no));
+        has_voted_emperor.write(proposing_realm_id, realm_id, 1);
+        voter_list_emperor.write(proposing_realm_id, votes.yes + votes.no, realm_id);
     }
     return ();
 }
@@ -119,16 +121,16 @@ func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 // @param proposing_realm_id The id of the realm who made the proposition
 // @param length The number of total votes for that proposal
 // @param index Starting index
-func _reset_voting{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func _reset_voting_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     proposing_realm_id: felt, length: felt, index: felt
 ) {
     if (length == index) {
-        voting_ledger.write(realm_id, Votes(0, 0));
+        voting_ledger_emperor.write(realm_id, Votes(0, 0));
         return ();
     }
-    let (voting_realm_id) = voter_list.read(proposing_realm_id, index);
-    has_voted.write(proposing_realm_id, voting_realm_id, 0);
-    voter_list.write(proposing_realm_id, index, 0);
-    _reset_voting(proposing_realm_id=proposing_realm_id, length=length, index=index + 1);
+    let (voting_realm_id) = voter_list_emperor.read(proposing_realm_id, index);
+    has_voted_emperor.write(proposing_realm_id, voting_realm_id, 0);
+    voter_list_emperor.write(proposing_realm_id, index, 0);
+    _reset_voting_emperor(proposing_realm_id=proposing_realm_id, length=length, index=index + 1);
     return ();
 }
