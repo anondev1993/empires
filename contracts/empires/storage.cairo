@@ -5,6 +5,22 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from contracts.empires.structures import Realm
 
 @storage_var
+func eth_contract() -> (address: felt) {
+}
+
+@storage_var
+func router_contract() -> (address: felt) {
+}
+
+@storage_var
+func l1_empire_contract() -> (address: felt) {
+}
+
+@storage_var
+func token_bridge_contract() -> (address: felt) {
+}
+
+@storage_var
 func realms(realm_id: felt) -> (realm: Realm) {
 }
 

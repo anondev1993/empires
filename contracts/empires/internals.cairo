@@ -4,9 +4,13 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.hash import hash2
 from starkware.starknet.common.syscalls import get_contract_address
 from starkware.cairo.common.uint256 import Uint256, uint256_check, uint256_le
+from starkware.cairo.common.alloc import alloc
+from starkware.starknet.common.messages import send_message_to_l1
+from starkware.cairo.common.math import assert_not_zero
 
 from contracts.empires.storage import lords_contract
 from src.openzeppelin.token.erc20.IERC20 import IERC20
+from contracts.interfaces.router import IRouter
 
 // @notice: Calculates the pedersen hash of the input array
 // @param: data_len The length of the input array
@@ -44,5 +48,67 @@ func check_empire_funds{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     with_attr error_message("insufficient funds for bounty") {
         uint256_le(amount_uint256, available_funds);
     }
+    return ();
+}
+
+// @notice: approve tokens then swaps a number of LORDS tokens for exact amount of ethereum tokens
+// @paramas router_address: address of router from jediswap
+// @params lords_token_address: address of LORDS ERC20
+// @params eth_token_address: address of ETH ERC20
+// @params max_lords_amount: max amount of LORDS tokens allowed to swap
+// @params eth_amount: exact amount of eth to retrieve
+func swap_lords_for_exact_eth{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    router_address: felt,
+    lords_token_address: felt,
+    eth_token_address: felt,
+    max_lords_amount: Uint256,
+    eth_amount: Uint256,
+) -> (amounts_len: felt, amounts: Uint256*) {
+    // TODO: check if you don't want negative numbers?
+    // or require higher than 0 ?
+
+    let (empire) = get_contract_address();
+    IERC20.approve(
+        contract_address=lords_token_address, spender=router_address, amount=max_lords_amount
+    );
+
+    let path: felt* = alloc();
+    assert [path] = lords_token_address;
+    assert [path + 1] = eth_token_address;
+
+    // swap the tokens
+    // TODO: verify that deadline is not issue
+    let (amounts_len: felt, amounts: Uint256*) = IRouter.swap_tokens_for_exact_tokens(
+        contract_address=router_address,
+        amountOut=eth_amount,
+        amountInMax=max_lords_amount,
+        path_len=2,
+        path=path,
+        to=empire,
+        deadline=0,
+    );
+
+    return (amounts_len, amounts);
+}
+
+// @notice: sends a message to L1 empire contract to buy a realm on OpenSea
+// @param l1_address: the address of the l1 empire contract
+// @param token_id: the id of the token to buy
+// @param amount: the amount in eth to spend for the token
+func message_l1_acquire_realm{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    l1_address: felt, token_id: felt, amount: Uint256
+) -> () {
+    with_attr error_message("AMOUNT TOO BIG") {
+        assert amount.high = 0;
+    }
+    // 0 = buy message
+    const MESSAGE = 0;
+    let (message_payload: felt*) = alloc();
+    assert message_payload[0] = MESSAGE;
+    assert message_payload[1] = token_id;
+    assert message_payload[2] = amount.low;
+
+    send_message_to_l1(to_address=l1_address, payload_size=3, payload=message_payload);
+
     return ();
 }

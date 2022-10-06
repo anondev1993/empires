@@ -17,8 +17,17 @@ from contracts.empires.constants import (
     INVOKE,
     VERSION,
 )
-from contracts.empires.internals import hash_array, check_empire_funds
+from contracts.empires.internals import (
+    hash_array,
+    check_empire_funds,
+    swap_lords_for_exact_eth,
+    message_l1_acquire_realm,
+)
 from contracts.empires.storage import (
+    eth_contract,
+    router_contract,
+    l1_empire_contract,
+    token_bridge_contract,
     realms,
     lords,
     realm_contract,
@@ -36,6 +45,7 @@ from src.openzeppelin.token.erc721.IERC721 import IERC721
 from src.openzeppelin.token.erc20.IERC20 import IERC20
 from contracts.interfaces.account import Account
 from contracts.interfaces.combat import Combat
+from contracts.interfaces.token_bridge import ITokenBridge
 from src.openzeppelin.access.ownable.library import Ownable
 
 @constructor
@@ -44,6 +54,10 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     realm_contract_address: felt,
     game_contract_address: felt,
     lords_contract_address: felt,
+    eth_contract_address: felt,
+    router_contract_address: felt,
+    l1_empire_contract_address: felt,
+    token_bridge_contract_address: felt,
     producer_taxes_: felt,
     attacker_taxes_: felt,
     goblin_taxes_: felt,
@@ -52,6 +66,10 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     realm_contract.write(realm_contract_address);
     game_contract.write(game_contract_address);
     lords_contract.write(lords_contract_address);
+    eth_contract.write(eth_contract_address);
+    router_contract.write(router_contract_address);
+    l1_empire_contract.write(l1_empire_contract_address);
+    token_bridge_contract.write(token_bridge_contract_address);
     producer_taxes.write(producer_taxes_);
     attacker_taxes.write(attacker_taxes_);
     goblin_taxes.write(goblin_taxes_);
@@ -231,6 +249,48 @@ func attack_and_claim_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
         to=caller,
         tokenId=Uint256(attacking_realm_id, 0),
     );
+
+    return ();
+}
+
+// @notice swaps token and sends them to L1 with a message approving buying a realm on OpenSea
+// @params max_lords_amount: maximum number of lords token to swap to get an exact eth amount
+// @params: token id of the realm to buy on L1
+@external
+func acquire_realm_l1{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    max_lords_amount: Uint256, eth_amount: Uint256, token_id: felt
+) -> () {
+    alloc_locals;
+    // check that the caller is the emperor
+    Ownable.assert_only_owner();
+
+    // TODO: check that the eth_amount is what has been validated by the DAO members
+
+    let (router_contract_address) = router_contract.read();
+    let (lords_contract_address) = lords_contract.read();
+    let (local eth_contract_address) = eth_contract.read();
+
+    // swap tokens
+    swap_lords_for_exact_eth(
+        router_contract_address,
+        lords_contract_address,
+        eth_contract_address,
+        max_lords_amount,
+        eth_amount,
+    );
+
+    let (l1_empire_contract_address) = l1_empire_contract.read();
+    let (token_bridge_contract_address) = token_bridge_contract.read();
+
+    // bridge token eth to l1
+    ITokenBridge.initiate_withdraw(
+        contract_address=token_bridge_contract_address,
+        l1_recipient=l1_empire_contract_address,
+        amount=eth_amount,
+    );
+
+    // send message to l1 using the send_message_to_l1() function
+    message_l1_acquire_realm(l1_empire_contract_address, token_id, eth_amount);
 
     return ();
 }
