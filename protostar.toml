@@ -7,9 +7,16 @@ libs_path = "lib"
 ["protostar.contracts"]
 empire = [
     "contracts/empire.cairo",
+    "./lib/JediSwap_git/contracts/Pair.cairo",
 ]
 
 ["protostar.test"]
+cairo-path = [
+    "./tests/",
+    "./lib/cairo_contracts_git/src",
+]
+
+["protostar.build"]
 cairo-path = [
     "./tests/",
     "./lib/cairo_contracts_git/src",

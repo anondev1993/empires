@@ -109,9 +109,13 @@ func vote_acquisition{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
             _reset_voting_acquisition(
                 proposing_realm_id=proposing_realm_id, length=votes.yes + votes.no, index=0
             );
-            let (acquisition_candidate: Acquisition) = acquisition_candidate(proposing_realm_id);
-            acquisition_candidate.passed = true;
-            Ownable.transfer_ownership(acquisition_candidate);
+            let (acquisition_candidate: Acquisition) = acquisition_candidate.read(
+                proposing_realm_id
+            );
+            acquisition_candidate.write(
+                proposing_realm_id,
+                Acquisition(acquisition_candidate.token_id, acquisition_candidate.eth_amount, 1),
+            );
             return ();
         }
         voting_ledger_acquisition.write(proposing_realm_id, Votes(votes.yes + 1, votes.no));
