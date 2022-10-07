@@ -145,6 +145,20 @@ func test_vote_acquisition_invalid_vote{
 }
 
 @external
+func test_vote_acquisition_invalid_acquisition{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    %{
+        start_prank(ids.ACCOUNT) 
+        store(context.self_address, "realms", [ids.ACCOUNT, 1, 0, 0], key=[ids.VOTING_REALM])
+        store(context.self_address, "acquisition_candidate", [ids.TOKEN_ID, ids.ETH_AMOUNT, 1], key=[ids.PROPOSING_REALM])
+        expect_revert(error_message="acquisition already passed")
+    %}
+    vote_acquisition(proposing_realm_id=PROPOSING_REALM, realm_id=VOTING_REALM, yes_or_no=1);
+    return ();
+}
+
+@external
 func test_vote_acquisition_has_voted{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }() {
