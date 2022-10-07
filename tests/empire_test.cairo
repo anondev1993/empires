@@ -56,6 +56,10 @@ const RESOURCE_MODULE = GOBLIN_TOWN_MODULE - 1;
 const TRAVEL_MODULE = RESOURCE_MODULE - 1;
 const REALM_CONTRACT = 123;
 const LORDS_CONTRACT = 123456789;
+const ETH_CONTRACT = 123456788;
+const ROUTER_CONTRACT = 123456787;
+const L1_EMPIRE_CONTRACT = 123456786;
+const TOKEN_BRIDGE_CONTRACT = 123456785;
 const BLOCK_TS = 100;
 
 @contract_interface
@@ -109,7 +113,8 @@ func test_deploy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         address = deploy_contract("./contracts/empire.cairo", 
                     [ids.EMPEROR, ids.REALM_CONTRACT, ids.BUILDING_MODULE, ids.FOOD_MODULE,
                     ids.GOBLIN_TOWN_MODULE, ids.RESOURCE_MODULE, ids.TRAVEL_MODULE, ids.COMBAT_MODULE,
-                    ids.LORDS_CONTRACT, producer_taxes, attacker_taxes, goblin_taxes]).contract_address
+                    ids.LORDS_CONTRACT, ids.ETH_CONTRACT, ids.ROUTER_CONTRACT, ids.L1_EMPIRE_CONTRACT,
+                    ids.TOKEN_BRIDGE_CONTRACT, producer_taxes, attacker_taxes, goblin_taxes]).contract_address
         owner = load(address, "Ownable_owner", "felt")[0]
         add = load(address, "realm_contract", "felt")[0]
         building = load(address, "building_module", "felt")[0]
@@ -118,6 +123,11 @@ func test_deploy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         resource = load(address, "resource_module", "felt")[0]
         travel = load(address, "travel_module", "felt")[0]
         combat = load(address, "combat_module", "felt")[0]
+        lords = load(address, "lords_contract", "felt")[0]
+        eth = load(address, "eth_contract", "felt")[0]
+        router = load(address, "router_contract", "felt")[0]
+        l1 = load(address, "l1_empire_contract", "felt")[0]
+        bridge = load(address, "token_bridge_contract", "felt")[0]
         p_taxes = load(address, "producer_taxes", "felt")[0]
         a_taxes = load(address, "attacker_taxes", "felt")[0]
         g_taxes = load(address, "goblin_taxes", "felt")[0]
@@ -133,6 +143,11 @@ func test_deploy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         assert resource == ids.RESOURCE_MODULE, f'resource module error, expected {ids.RESOURCE_MODULE}, got {resource}'
         assert travel == ids.TRAVEL_MODULE, f'travel module error, expected {ids.TRAVEL_MODULE}, got {travel}'
         assert combat == ids.COMBAT_MODULE, f'combat module error, expected {ids.COMBAT_MODULE}, got {combat}'
+        assert lords == ids.LORDS_CONTRACT, f'lords error, expected {ids.LORDS_CONTRACT}, got {lords}'
+        assert eth == ids.ETH_CONTRACT, f'eth error, expected {ids.ETH_CONTRACT}, got {eth}'
+        assert router == ids.ROUTER_CONTRACT, f'router error, expected {ids.ROUTER_CONTRACT}, got {router}'
+        assert l1 == ids.L1_EMPIRE_CONTRACT, f'l1 error, expected {ids.L1_EMPIRE_CONTRACT}, got {l1}'
+        assert bridge == ids.TOKEN_BRIDGE_CONTRACT, f'bridge error, expected {ids.TOKEN_BRIDGE_CONTRACT}, got {bridge}'
     %}
     return ();
 }
