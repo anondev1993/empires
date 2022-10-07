@@ -1,8 +1,10 @@
 %lang starknet
 
-from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.cairo_builtins import HashBuiltin, BitwiseBuiltin
 from starkware.cairo.common.bool import TRUE, FALSE
+from starkware.cairo.common.uint256 import Uint256
 
+from contracts.interfaces.realms import IBuildings, IFood, IResources, ITravel, ICombat
 from contracts.empires.storage import (
     building_module,
     food_module,
@@ -11,6 +13,7 @@ from contracts.empires.storage import (
     travel_module,
     combat_module,
 )
+from contracts.settling_game.utils.constants import CCombat
 from src.openzeppelin.access.ownable.library import Ownable
 
 // BUILDING
@@ -166,5 +169,5 @@ func initiate_combat{
     Ownable.assert_only_owner();
     // TODO check the realm is not attacking someone from the empire
     // TODO call initiate_combat from the combat_module
-    return ();
+    return (combat_outcome=CCombat.COMBAT_OUTCOME_ATTACKER_WINS);
 }
