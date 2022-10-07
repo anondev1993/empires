@@ -3,7 +3,7 @@
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem, assert_lt
 from starkware.cairo.common.math_cmp import is_le
-from starkware.starknet.common.syscalls import get_caller_address, get_block_timestamp
+from starkware.starknet.common.syscalls import get_caller_address
 from starkware.cairo.common.uint256 import Uint256
 from src.openzeppelin.access.ownable.library import Ownable
 
@@ -76,8 +76,12 @@ func vote_acquisition{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
         assert [range_check_ptr] = yes_or_no;
         assert [range_check_ptr + 1] = 1 - yes_or_no;
     }
-
     let range_check_ptr = range_check_ptr + 2;
+
+    let (acquisition_candidate_: Acquisition) = acquisition_candidate.read(proposing_realm_id);
+    with_attr error_message("acquisition already passed") {
+        assert acquisition_candidate_.passed = 0;
+    }
 
     let (has_voted_acquisition_) = has_voted_acquisition.read(proposing_realm_id, realm_id);
     with_attr error_message("realm has already voted") {
