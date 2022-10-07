@@ -14,6 +14,8 @@ const ACCOUNT = 1;
 const REALM_QUANTITY = 15;
 const VOTING_REALM = 123;
 const PROPOSING_REALM = 1234;
+const ETH_AMOUNT = 1409184492184;
+const TOKEN_ID = 609;
 
 @external
 func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
@@ -86,9 +88,6 @@ func test_propose_realm_acquisition_one_realm{
 func test_propose_realm_acquisition{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }() {
-    alloc_locals;
-    local ETH_AMOUNT = 1;
-    local TOKEN_ID = 1;
     %{
         start_prank(ids.ACCOUNT) 
         store(context.self_address, "realms", [ids.ACCOUNT, 1, 0, 0], key=[ids.PROPOSING_REALM])
@@ -103,6 +102,197 @@ func test_propose_realm_acquisition{
         assert ledger[0] == 1 and ledger[1] == 0, f'ledger error, expected (1,0), got {ledger[0], ledger[1]}'
         assert realm_id == ids.PROPOSING_REALM, f'realm id error, expected {ids.PROPOSING_REALM}, got {realm_id}'
         assert voted == 1, f'voted error, expected 1, got {voted}'
+        assert acquisition[0] == ids.TOKEN_ID, f'token id error, expected {ids.TOKEN_ID}, got {acquisition[0]}'
+        assert acquisition[1] == ids.ETH_AMOUNT, f'eth amount error, expected {ids.ETH_AMOUNT}, got {acquisition[1]}'
+        assert acquisition[2] == 0, f'status error, expected 0, got {acquisition[2]}'
+    %}
+    return ();
+}
+
+@external
+func test_vote_acquisition_zero{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    %{
+        start_prank(0) 
+        expect_revert(error_message="calling lord is the zero address")
+    %}
+    vote_acquisition(proposing_realm_id=1, realm_id=1, yes_or_no=1);
+    return ();
+}
+
+@external
+func test_vote_acquisition_not_owned{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    %{
+        start_prank(ids.ACCOUNT) 
+        expect_revert(error_message="calling lord does not own this realm")
+    %}
+    vote_acquisition(proposing_realm_id=1, realm_id=1, yes_or_no=1);
+    return ();
+}
+
+@external
+func test_vote_acquisition_invalid_vote{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    %{
+        start_prank(ids.ACCOUNT) 
+        store(context.self_address, "realms", [ids.ACCOUNT, 1, 0, 0], key=[ids.VOTING_REALM])
+        expect_revert(error_message="invalid vote")
+    %}
+    vote_acquisition(proposing_realm_id=PROPOSING_REALM, realm_id=VOTING_REALM, yes_or_no=2);
+    return ();
+}
+
+@external
+func test_vote_acquisition_has_voted{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    %{
+        start_prank(ids.ACCOUNT) 
+        store(context.self_address, "has_voted_acquisition", [1], key=[ids.PROPOSING_REALM, ids.VOTING_REALM])
+        store(context.self_address, "realms", [ids.ACCOUNT, 1, 0, 0], key=[ids.VOTING_REALM])
+        expect_revert(error_message="realm has already voted")
+    %}
+    vote_acquisition(proposing_realm_id=PROPOSING_REALM, realm_id=VOTING_REALM, yes_or_no=1);
+    return ();
+}
+
+@external
+func test_vote_acquisition_no_minority{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    alloc_locals;
+    local length;
+    %{
+        store(context.self_address, "realms", [ids.ACCOUNT, 1, 0, 0], key=[ids.VOTING_REALM])
+        start_prank(ids.ACCOUNT) 
+
+        from random import randint
+        ids.length = ids.REALM_QUANTITY - 1
+        voting_realms = [randint(1, 10000) for i in range(ids.length)]
+        yes = ids.length//2 + 1
+        no = ids.length - yes
+        for i in range(ids.length):
+            store(context.self_address, "voter_list_acquisition", [voting_realms[i]], key=[ids.PROPOSING_REALM, i])
+            store(context.self_address, "has_voted_acquisition", [1], key=[ids.PROPOSING_REALM, voting_realms[i]])
+        store(context.self_address, "voting_ledger_acquisition", [yes, no], key=[ids.PROPOSING_REALM])
+        store(context.self_address, "realms_count", [ids.REALM_QUANTITY])
+    %}
+    vote_acquisition(proposing_realm_id=PROPOSING_REALM, realm_id=VOTING_REALM, yes_or_no=0);
+    %{
+        ledger = load(context.self_address, "voting_ledger_acquisition", "Votes", key=[ids.PROPOSING_REALM])
+        assert ledger[0] == yes and ledger[1] == no + 1, f'ledger error, expected {yes, no+1}, got {ledger[0], ledger[1]}'
+        realm_id = load(context.self_address, "voter_list_acquisition", "felt", key=[ids.PROPOSING_REALM, yes+no])[0]
+        voted = load(context.self_address, "has_voted_acquisition", "felt", key=[ids.PROPOSING_REALM, ids.VOTING_REALM])[0]
+        assert realm_id == ids.VOTING_REALM, f'realm id error, expected {ids.VOTING_REALM}, got {realm_id}'
+        assert voted == 1, f'voted error, expected 1, got {voted}'
+    %}
+    return ();
+}
+
+@external
+func test_vote_acquisition_no_majority{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    alloc_locals;
+    local length;
+    %{
+        store(context.self_address, "realms", [ids.ACCOUNT, 1, 0, 0], key=[ids.VOTING_REALM])
+        start_prank(ids.ACCOUNT) 
+
+        from random import randint
+        ids.length = ids.REALM_QUANTITY - 1
+        voting_realms = [randint(1, 10000) for i in range(ids.length)]
+        no = ids.length//2 + 1
+        yes = ids.length - no
+        for i in range(ids.length):
+            store(context.self_address, "voter_list_acquisition", [voting_realms[i]], key=[ids.PROPOSING_REALM, i])
+            store(context.self_address, "has_voted_acquisition", [1], key=[ids.PROPOSING_REALM, voting_realms[i]])
+        store(context.self_address, "voting_ledger_acquisition", [yes, no], key=[ids.PROPOSING_REALM])
+        store(context.self_address, "realms_count", [ids.REALM_QUANTITY])
+    %}
+    vote_acquisition(proposing_realm_id=PROPOSING_REALM, realm_id=VOTING_REALM, yes_or_no=0);
+    %{
+        ledger = load(context.self_address, "voting_ledger_acquisition", "Votes", key=[ids.PROPOSING_REALM])
+        assert ledger[0] == 0 and ledger[1] == 0, f'ledger error, expected (0,0), got {ledger[0], ledger[1]}'
+        for i in range(ids.length):
+            realm_id = load(context.self_address, "voter_list_acquisition", "felt", key=[ids.PROPOSING_REALM, i])[0]
+            voted = load(context.self_address, "has_voted_acquisition", "felt", key=[ids.PROPOSING_REALM, voting_realms[i]])[0]
+            assert realm_id == 0, f'realm id error, expected 0, got {realm_id}'
+            assert voted == 0, f'voted error, expected 0, got {voted}'
+    %}
+    return ();
+}
+
+@external
+func test_vote_acquisition_yes_minority{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    alloc_locals;
+    local length;
+    %{
+        store(context.self_address, "realms", [ids.ACCOUNT, 1, 0, 0], key=[ids.VOTING_REALM])
+        start_prank(ids.ACCOUNT) 
+
+        from random import randint
+        ids.length = ids.REALM_QUANTITY - 1
+        voting_realms = [randint(1, 10000) for i in range(ids.length)]
+        no = ids.length//2 + 1
+        yes = ids.length - no
+        for i in range(ids.length):
+            store(context.self_address, "voter_list_acquisition", [voting_realms[i]], key=[ids.PROPOSING_REALM, i])
+            store(context.self_address, "has_voted_acquisition", [1], key=[ids.PROPOSING_REALM, voting_realms[i]])
+        store(context.self_address, "voting_ledger_acquisition", [yes, no], key=[ids.PROPOSING_REALM])
+        store(context.self_address, "realms_count", [ids.REALM_QUANTITY])
+    %}
+    vote_acquisition(proposing_realm_id=PROPOSING_REALM, realm_id=VOTING_REALM, yes_or_no=1);
+    %{
+        ledger = load(context.self_address, "voting_ledger_acquisition", "Votes", key=[ids.PROPOSING_REALM])
+        assert ledger[0] == yes+1 and ledger[1] == no, f'ledger error, expected {yes+1, no}, got {ledger[0], ledger[1]}'
+        realm_id = load(context.self_address, "voter_list_acquisition", "felt", key=[ids.PROPOSING_REALM, yes+no])[0]
+        voted = load(context.self_address, "has_voted_acquisition", "felt", key=[ids.PROPOSING_REALM, ids.VOTING_REALM])[0]
+        assert realm_id == ids.VOTING_REALM, f'realm id error, expected {ids.VOTING_REALM}, got {realm_id}'
+        assert voted == 1, f'voted error, expected 1, got {voted}'
+    %}
+    return ();
+}
+
+@external
+func test_vote_acquisition_yes_majority{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() {
+    alloc_locals;
+    local length;
+    %{
+        store(context.self_address, "realms", [ids.ACCOUNT, 1, 0, 0], key=[ids.VOTING_REALM])
+        start_prank(ids.ACCOUNT) 
+
+        from random import randint
+        ids.length = ids.REALM_QUANTITY - 1
+        voting_realms = [randint(1, 10000) for i in range(ids.length)]
+        yes = ids.length//2 + 1
+        no = ids.length - yes
+        for i in range(ids.length):
+            store(context.self_address, "voter_list_acquisition", [voting_realms[i]], key=[ids.PROPOSING_REALM, i])
+            store(context.self_address, "has_voted_acquisition", [1], key=[ids.PROPOSING_REALM, voting_realms[i]])
+        store(context.self_address, "voting_ledger_acquisition", [yes, no], key=[ids.PROPOSING_REALM])
+        store(context.self_address, "realms_count", [ids.REALM_QUANTITY])
+        store(context.self_address, "acquisition_candidate", [ids.TOKEN_ID, ids.ETH_AMOUNT, 0], key=[ids.PROPOSING_REALM])
+    %}
+    vote_acquisition(proposing_realm_id=PROPOSING_REALM, realm_id=VOTING_REALM, yes_or_no=1);
+    %{
+        ledger = load(context.self_address, "voting_ledger_acquisition", "Votes", key=[ids.PROPOSING_REALM])
+        assert ledger[0] == 0 and ledger[1] == 0, f'ledger error, expected (0,0), got {ledger[0], ledger[1]}'
+        for i in range(ids.length):
+            realm_id = load(context.self_address, "voter_list_acquisition", "felt", key=[ids.PROPOSING_REALM, i])[0]
+            voted = load(context.self_address, "has_voted_acquisition", "felt", key=[ids.PROPOSING_REALM, voting_realms[i]])[0]
+            assert realm_id == 0, f'realm id error, expected 0, got {realm_id}'
+            assert voted == 0, f'voted error, expected 0, got {voted}'
+        acquisition = load(context.self_address, "acquisition_candidate", "Acquisition", key=[ids.PROPOSING_REALM])
+        assert acquisition[0] == ids.TOKEN_ID, f'token id error, expected {ids.TOKEN_ID}, got {acquisition[0]}'
+        assert acquisition[1] == ids.ETH_AMOUNT, f'eth amount error, expected {ids.ETH_AMOUNT}, got {acquisition[1]}'
+        assert acquisition[2] == 1, f'status error, expected 1, got {acquisition[2]}'
     %}
     return ();
 }
