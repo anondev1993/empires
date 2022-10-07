@@ -17,8 +17,6 @@ from contracts.empires.storage import (
 )
 from contracts.empires.structures import Votes, Acquisition, Realm
 
-// TODO: test these functions
-
 // @notice Starts the voting process to acquire a realm on L1
 // @param acquisition The new proposed realm on L1 to be acquired
 // @param realm_id The proposing realm

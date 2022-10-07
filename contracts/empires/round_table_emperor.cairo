@@ -17,8 +17,6 @@ from contracts.empires.storage import (
 from contracts.empires.structures import Votes, Realm
 from src.openzeppelin.access.ownable.library import Ownable_owner
 
-// TODO: test these functions
-
 // @notice Starts a new emperor voting process
 // @param new_emperor The new proposed emperor
 // @param realm_id The proposing realm
