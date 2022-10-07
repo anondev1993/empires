@@ -10,6 +10,22 @@ from starkware.starknet.common.syscalls import (
 from starkware.cairo.common.signature import verify_ecdsa_signature
 from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_check
 
+from contracts.empires.realms import (
+    build,
+    create,
+    harvest,
+    convert_food_tokens_to_store,
+    claim_resources,
+    pillage_resources,
+    travel,
+    build_army_from_battalions,
+    initiate_combat,
+)
+from contracts.empires.round_table_emperor import propose_emperor_change, vote_emperor
+from contracts.empires.round_table_realms_acquisition import (
+    propose_realm_acquisition,
+    vote_acquisition,
+)
 from contracts.empires.constants import (
     EXECUTE_ENTRYPOINT,
     GOERLI,
@@ -51,7 +67,7 @@ from contracts.settling_game.utils.constants import CCombat
 from src.openzeppelin.token.erc721.IERC721 import IERC721
 from src.openzeppelin.token.erc20.IERC20 import IERC20
 from contracts.interfaces.account import Account
-from contracts.interfaces.combat import Combat
+from contracts.interfaces.realms import ICombat
 from contracts.interfaces.token_bridge import ITokenBridge
 from src.openzeppelin.access.ownable.library import Ownable
 
@@ -304,7 +320,7 @@ func hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
     // attack the target of the bounty
     let (combat_module_) = combat_module.read();
-    let (result) = Combat.initiate_combat(
+    let (result) = ICombat.initiate_combat(
         contract_address=combat_module_,
         attacking_army_id=attacking_army_id,
         attacking_realm_id=Uint256(attacking_realm_id, 0),
