@@ -78,6 +78,11 @@ func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 
     let range_check_ptr = range_check_ptr + 2;
 
+    let (emperor) = emperor_candidate.read(proposing_realm_id);
+    with_attr error_message("proposed emperor is the zero address") {
+        assert_not_zero(emperor);
+    }
+
     let (has_voted_emperor_) = has_voted_emperor.read(proposing_realm_id, realm_id);
     with_attr error_message("realm has already voted") {
         assert has_voted_emperor_ = 0;
