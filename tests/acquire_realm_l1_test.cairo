@@ -176,6 +176,8 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         context.empire_address = deploy_contract("./contracts/empire.cairo", 
                     [ids.EMPEROR,
                      ids.REALM_CONTRACT,
+                     0,
+                     0,
                      ids.BUILDING_MODULE_ADDRESS, 
                      ids.FOOD_MODULE_ADDRESS,
                      ids.GOBLIN_TOWN_MODULE_ADDRESS,

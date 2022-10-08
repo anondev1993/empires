@@ -42,6 +42,7 @@ const ACCOUNT = 12345;
 const EMPEROR = 12414;
 const REALM_ID = 1;
 const PROXY_ADMIN = 1234;
+const NOT_EMPIRE_REALM_ID = 8127587158913;
 
 const ATTACKING_ARMY_ID = 5;
 const DEFENDING_ARMY_ID = 0;
@@ -184,7 +185,7 @@ func test_harvest_not_empire{
         store(context.self_address, "Ownable_owner", [ids.ACCOUNT])
         expect_revert(error_message="realm not part of the empire")
     %}
-    harvest(token_id=Uint256(1, 0), food_building_id=1);
+    harvest(token_id=Uint256(NOT_EMPIRE_REALM_ID, 0), food_building_id=1);
     return ();
 }
 
@@ -224,7 +225,7 @@ func test_claim_resources_not_empire{
         store(context.self_address, "Ownable_owner", [ids.EMPEROR])
         expect_revert(error_message="realm not part of the empire")
     %}
-    claim_resources(token_id=Uint256(1, 0));
+    claim_resources(token_id=Uint256(NOT_EMPIRE_REALM_ID, 0));
     return ();
 }
 
