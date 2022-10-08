@@ -64,6 +64,13 @@ func build{
     return (success=1);
 }
 
+@external
+func create{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(token_id: Uint256, qty: felt, food_building_id: felt) {
+    return ();
+}
+
 // @notice Mocks the call to harvest food module
 // @param token_id The staked Realm id (S_Realm)
 // @param harvest_type The harvest type is either export or store. Export mints tokens, store keeps on the realm as food
