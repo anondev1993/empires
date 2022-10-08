@@ -54,10 +54,11 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 @external
 func test_resources_arr{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
-    let (resources) = get_resources();
+    let (resources: Uint256*) = get_resources();
     %{
         for i in range(22):
-            assert i+1 == memory[ids.resources + i]
+            assert i+1 == memory[ids.resources._reference_value + 2*i]
+            assert 0 == memory[ids.resources._reference_value + 2*i + 1]
     %}
     return ();
 }
