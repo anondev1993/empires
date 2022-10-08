@@ -22,8 +22,6 @@ namespace IFood {
 namespace IResources {
     func claim_resources(token_id: Uint256) {
     }
-    func pillage_resources(token_id: Uint256, claimer: felt) {
-    }
 }
 
 @contract_interface
