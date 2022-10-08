@@ -19,6 +19,7 @@ from contracts.empires.storage import (
     travel_module,
     combat_module,
     producer_taxes,
+    attacker_taxes,
 )
 from contracts.empires.helpers import get_resources, get_owners, get_resources_refund
 from contracts.empires.modifiers import Modifier
@@ -347,6 +348,7 @@ func initiate_combat{
     defending_army_id: felt,
     defending_realm_id: Uint256,
 ) -> (combat_outcome: felt) {
+    alloc_locals;
     Ownable.assert_only_owner();
     Modifier.assert_part_of_empire(realm_id=attacking_realm_id.low);
     let (defending) = realms.read(defending_realm_id.low);
@@ -355,10 +357,21 @@ func initiate_combat{
         assert defending.annexation_date = 0;
     }
 
+    // prepare the call to balanceOfBatch
     let (resources_address) = erc1155_contract.read();
-    // let (resources_len, resources) = IERC1155.balanceOfBatch(
-    //     contract_address=resources_address, owners_len=22, owners=0, tokens_id_len=22, tokens_id=0
-    // );
+    let (owners: felt*) = get_owners();
+    let (token_ids: Uint256*) = get_resources();
+
+    let (local pre_balance_len, local pre_balance) = IERC1155.balanceOfBatch(
+        contract_address=resources_address,
+        owners_len=RESOURCES_LENGTH,
+        owners=owners,
+        tokens_id_len=RESOURCES_LENGTH,
+        tokens_id=token_ids,
+    );
+    with_attr error_message("resources balance length error") {
+        assert pre_balance_len = RESOURCES_LENGTH;
+    }
 
     let (combat_module_) = combat_module.read();
     let (combat_outcome) = ICombat.initiate_combat(
@@ -368,6 +381,47 @@ func initiate_combat{
         defending_army_id=defending_army_id,
         defending_realm_id=defending_realm_id,
     );
-    // TODO add the taxes
+    if (combat_outcome == CCombat.COMBAT_OUTCOME_ATTACKER_WINS) {
+        // recall balanceOfBatch to retrieve increase in resources
+        let (local post_balance_len, local post_balance) = IERC1155.balanceOfBatch(
+            contract_address=resources_address,
+            owners_len=RESOURCES_LENGTH,
+            owners=owners,
+            tokens_id_len=RESOURCES_LENGTH,
+            tokens_id=token_ids,
+        );
+        with_attr error_message("resources balance length error") {
+            assert pre_balance_len = RESOURCES_LENGTH;
+        }
+
+        // calculate the taxable amount of resources
+        let (local refund_resources: Uint256*) = alloc();
+        let (attacker_taxes_) = attacker_taxes.read();
+        get_resources_refund(
+            len=RESOURCES_LENGTH,
+            post_resources=post_balance,
+            pre_resources=pre_balance,
+            diff_resources=refund_resources,
+            tax=attacker_taxes_,
+        );
+
+        // send excess resources back to user
+        let (empire_address) = get_contract_address();
+        let (realm: Realm) = realms.read(attacking_realm_id.low);
+        let (data: felt*) = alloc();
+        assert data[0] = 0;
+        IERC1155.safeBatchTransferFrom(
+            contract_address=resources_address,
+            _from=empire_address,
+            to=realm.lord,
+            ids_len=RESOURCES_LENGTH,
+            ids=token_ids,
+            amounts_len=RESOURCES_LENGTH,
+            amounts=refund_resources,
+            data_len=1,
+            data=data,
+        );
+        return (combat_outcome=combat_outcome);
+    }
     return (combat_outcome=combat_outcome);
 }
