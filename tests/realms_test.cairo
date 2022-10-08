@@ -6,7 +6,7 @@ from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.alloc import alloc
 
 from contracts.empires.realms import harvest
-from contracts.empires.helpers import get_resources, get_owners, get_resources_diff
+from contracts.empires.helpers import get_resources, get_owners, get_resources_refund
 from Realms.realms import AMOUNT_FISH, AMOUNT_WHEAT
 from contracts.settling_game.utils.game_structs import ResourceIds
 from contracts.settling_game.interfaces.IERC1155 import IERC1155
@@ -64,7 +64,7 @@ func test_resources_arr{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 }
 
 @external
-func test_diff_resources{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+func test_resources_refund{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
     let (post_resources: Uint256*) = alloc();
     let (pre_resources: Uint256*) = alloc();
@@ -72,7 +72,7 @@ func test_diff_resources{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     let (resources) = get_resources();
     %{
         from random import randint
-        diffs = []
+        refunds = []
         for i in range(22):
             pre = randint(1, 100000)
             add = randint(1, 100000)
@@ -80,18 +80,19 @@ func test_diff_resources{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
             memory[ids.pre_resources._reference_value + 2*i + 1] = 0
             memory[ids.post_resources._reference_value + 2*i] = pre + add
             memory[ids.post_resources._reference_value + 2*i + 1] = 0
-            diffs.append(add)
+            refunds.append(add * (100 - ids.PRODUCER_TAXES) // 100)
     %}
-    get_resources_diff(
+    get_resources_refund(
         len=22,
         post_resources=post_resources,
         pre_resources=pre_resources,
         diff_resources=diff_resources,
+        tax=PRODUCER_TAXES,
     );
     %{
         for i in range(22):
-            diff = memory[ids.diff_resources._reference_value + 2*i]
-            assert diff == diffs[i], f'difference error, expected {diffs[i]}, got {diff}'
+            ref = memory[ids.diff_resources._reference_value + 2*i]
+            assert ref == refunds[i], f'refund error, expected {diffs[i]}, got {ref}'
     %}
     return ();
 }
