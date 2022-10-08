@@ -5,7 +5,7 @@ from starkware.starknet.common.syscalls import get_contract_address
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.alloc import alloc
 
-from contracts.empires.realms import harvest, claim_resources, initiate_combat
+from contracts.empires.realms import harvest, claim_resources, initiate_combat, build
 from contracts.empires.helpers import get_resources, get_owners, get_resources_refund
 from Realms.realms import (
     AMOUNT_FISH,
@@ -43,6 +43,7 @@ const EMPEROR = 12414;
 const REALM_ID = 1;
 const PROXY_ADMIN = 1234;
 const NOT_EMPIRE_REALM_ID = 8127587158913;
+const BLOCK_TS = 873458;
 
 const ATTACKING_ARMY_ID = 5;
 const DEFENDING_ARMY_ID = 0;
@@ -103,6 +104,7 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         store(context.self_address, "attacker_taxes", [ids.ATTACKER_TAXES])
         store(context.self_address, "food_module", [context.realm_contract_address])
         store(context.self_address, "resource_module", [context.realm_contract_address])
+        store(context.self_address, "building_module", [context.realm_contract_address])
         store(context.self_address, "combat_module", [context.realm_contract_address])
         store(context.self_address, "erc1155_contract", [ids.erc1155_address])
     %}
@@ -358,6 +360,37 @@ func test_initiate_combat{
             diff = (100 - ids.ATTACKER_TAXES) * resources_increment[i] // 100
             assert post_resource_empire == pre_resources[i] + resources_increment[i] - diff, f'post resource empire {i} error, expected {pre_resources[i] + resources_increment[i] - diff}, got {post_resource_empire}'
             assert post_resource_account == diff, f'post resource account {i} error, expected {diff}, got {post_resource_account}'
+    %}
+    return ();
+}
+
+@external
+func test_build_not_exiting{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
+    %{
+        start_prank(ids.EMPEROR) 
+        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
+        store(context.self_address, "realms", [context.account, 1, 1, 0], key=[ids.REALM_ID])
+        expect_revert(error_message="realm exiting the empire")
+    %}
+    build(token_id=Uint256(REALM_ID, 0), building_id=1, quantity=2);
+    return ();
+}
+
+@external
+func test_build{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
+    %{
+        start_prank(ids.EMPEROR) 
+        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
+        warp(ids.BLOCK_TS)
+    %}
+    build(token_id=Uint256(REALM_ID, 0), building_id=1, quantity=2);
+    %{
+        realm = load(context.self_address, "realms", "Realm", key=[ids.REALM_ID])
+        assert realm[3] == ids.BLOCK_TS + 24*3600, f'exiting date error, expected {ids.BLOCK_TS + 24*3600}, got {realm[3]}'
     %}
     return ();
 }
