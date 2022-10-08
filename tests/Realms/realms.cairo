@@ -57,32 +57,6 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return ();
 }
 
-// @notice Mocks the call to initiate_combat combat module
-// @param attacking_realm_id The staked Realm id (S_Realm)
-// @param defending_realm_id The staked Realm id (S_Realm)
-// @return: combat_outcome The outcome of the combat - either the attacker (CCombat.COMBAT_OUTCOME_ATTACKER_WINS)
-//                          or the defender (CCombat.COMBAT_OUTCOME_DEFENDER_WINS)
-@external
-func initiate_combat{
-    range_check_ptr, syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, bitwise_ptr: BitwiseBuiltin*
-}(
-    attacking_army_id: felt,
-    attacking_realm_id: Uint256,
-    defending_army_id: felt,
-    defending_realm_id: Uint256,
-) -> (combat_outcome: felt) {
-    let (outcome) = combat_outcome.read();
-    return (combat_outcome=outcome);
-}
-
-@external
-func set_combat_outcome{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    _outcome: felt
-) {
-    combat_outcome.write(_outcome);
-    return ();
-}
-
 // @notice Mocks the call to harvest food module
 // @param token_id The staked Realm id (S_Realm)
 // @param harvest_type The harvest type is either export or store. Export mints tokens, store keeps on the realm as food
@@ -125,9 +99,62 @@ func claim_resources{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check
     let (erc1155_contract_address) = erc1155.read();
     let (address) = empire.read();
     let (ids: Uint256*) = get_resources();
-    let (amounts: Uint256*) = alloc();
+    let (amounts: Uint256*) = _get_amounts();
     let (data: felt*) = alloc();
     assert data[0] = 0;
+    IERC1155.mintBatch(
+        contract_address=erc1155_contract_address,
+        to=address,
+        ids_len=RESOURCES_LENGTH,
+        ids=ids,
+        amounts_len=RESOURCES_LENGTH,
+        amounts=amounts,
+        data_len=1,
+        data=data,
+    );
+    return ();
+}
+
+// @notice Mocks the call to initiate_combat combat module
+// @param attacking_realm_id The staked Realm id (S_Realm)
+// @param defending_realm_id The staked Realm id (S_Realm)
+// @return: combat_outcome The outcome of the combat - either the attacker (CCombat.COMBAT_OUTCOME_ATTACKER_WINS)
+//                          or the defender (CCombat.COMBAT_OUTCOME_DEFENDER_WINS)
+@external
+func initiate_combat{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    attacking_army_id: felt,
+    attacking_realm_id: Uint256,
+    defending_army_id: felt,
+    defending_realm_id: Uint256,
+) -> (combat_outcome: felt) {
+    alloc_locals;
+    let (erc1155_contract_address) = erc1155.read();
+    let (address) = empire.read();
+    let (ids: Uint256*) = get_resources();
+    let (amounts: Uint256*) = _get_amounts();
+    let (data: felt*) = alloc();
+    assert data[0] = 0;
+    IERC1155.mintBatch(
+        contract_address=erc1155_contract_address,
+        to=address,
+        ids_len=RESOURCES_LENGTH,
+        ids=ids,
+        amounts_len=RESOURCES_LENGTH,
+        amounts=amounts,
+        data_len=1,
+        data=data,
+    );
+    return (combat_outcome=1);
+}
+
+func _get_amounts{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    amounts: Uint256*
+) {
+    alloc_locals;
+    let (erc1155_contract_address) = erc1155.read();
+    let (address) = empire.read();
+    let (ids: Uint256*) = get_resources();
+    let (amounts: Uint256*) = alloc();
     assert [amounts] = Uint256(AMOUNT_WOOD, 0);
     assert [amounts + Uint256.SIZE] = Uint256(AMOUNT_STONE, 0);
     assert [amounts + 2 * Uint256.SIZE] = Uint256(AMOUNT_COAL, 0);
@@ -150,15 +177,5 @@ func claim_resources{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check
     assert [amounts + 19 * Uint256.SIZE] = Uint256(AMOUNT_ADAMANTINE, 0);
     assert [amounts + 20 * Uint256.SIZE] = Uint256(AMOUNT_MITHRAL, 0);
     assert [amounts + 21 * Uint256.SIZE] = Uint256(AMOUNT_DRAGONHIDE, 0);
-    IERC1155.mintBatch(
-        contract_address=erc1155_contract_address,
-        to=address,
-        ids_len=RESOURCES_LENGTH,
-        ids=ids,
-        amounts_len=RESOURCES_LENGTH,
-        amounts=amounts,
-        data_len=1,
-        data=data,
-    );
-    return ();
+    return (amounts=amounts);
 }

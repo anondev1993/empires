@@ -5,7 +5,7 @@ from starkware.starknet.common.syscalls import get_contract_address
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.alloc import alloc
 
-from contracts.empires.realms import harvest, claim_resources
+from contracts.empires.realms import harvest, claim_resources, initiate_combat
 from contracts.empires.helpers import get_resources, get_owners, get_resources_refund
 from Realms.realms import (
     AMOUNT_FISH,
@@ -43,8 +43,14 @@ const EMPEROR = 12414;
 const REALM_ID = 1;
 const PROXY_ADMIN = 1234;
 
+const ATTACKING_ARMY_ID = 5;
+const DEFENDING_ARMY_ID = 0;
+const ATTACKING_REALM_ID = 123;
+const DEFENDING_REALM_ID = 892;
+
 const FOOD_MODULE = 123;
 const PRODUCER_TAXES = 30;
+const ATTACKER_TAXES = 30;
 
 // Helper
 
@@ -93,8 +99,10 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
         store(context.self_address, "realms", [context.account, 1, 0, 0], key=[ids.REALM_ID])
         store(context.self_address, "producer_taxes", [ids.PRODUCER_TAXES])
+        store(context.self_address, "attacker_taxes", [ids.ATTACKER_TAXES])
         store(context.self_address, "food_module", [context.realm_contract_address])
         store(context.self_address, "resource_module", [context.realm_contract_address])
+        store(context.self_address, "combat_module", [context.realm_contract_address])
         store(context.self_address, "erc1155_contract", [ids.erc1155_address])
     %}
     IProxy.initializer(contract_address=erc1155_address, uri=URI, proxy_admin=address);
@@ -224,7 +232,6 @@ func test_claim_resources_not_empire{
 func test_claim_resources{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }() {
-    alloc_locals;
     %{
         stop_prank = start_prank(ids.EMPEROR) 
         resources_increment = [ids.AMOUNT_WOOD,
@@ -259,6 +266,95 @@ func test_claim_resources{
             post_resource_empire = load(context.erc1155_contract_address, "ERC1155_balances", "Uint256", key=[i+1, 0, context.self_address])[0]
             post_resource_account = load(context.erc1155_contract_address, "ERC1155_balances", "Uint256", key=[i+1, 0, context.account])[0]
             diff = (100 - ids.PRODUCER_TAXES) * resources_increment[i] // 100
+            assert post_resource_empire == pre_resources[i] + resources_increment[i] - diff, f'post resource empire {i} error, expected {pre_resources[i] + resources_increment[i] - diff}, got {post_resource_empire}'
+            assert post_resource_account == diff, f'post resource account {i} error, expected {diff}, got {post_resource_account}'
+    %}
+    return ();
+}
+
+@external
+func test_initiate_combat_not_empire{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
+    %{
+        start_prank(ids.EMPEROR) 
+        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
+        expect_revert(error_message="realm not part of the empire")
+    %}
+    initiate_combat(
+        attacking_army_id=ATTACKING_ARMY_ID,
+        attacking_realm_id=Uint256(ATTACKING_REALM_ID, 0),
+        defending_army_id=DEFENDING_ARMY_ID,
+        defending_realm_id=Uint256(DEFENDING_REALM_ID, 0),
+    );
+    return ();
+}
+
+@external
+func test_initiate_combat_friendly{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
+    %{
+        start_prank(ids.EMPEROR) 
+        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
+        store(context.self_address, "realms", [context.account, 1, 0, 0], key=[ids.ATTACKING_REALM_ID])
+        store(context.self_address, "realms", [ids.ACCOUNT, 1, 0, 0], key=[ids.DEFENDING_REALM_ID])
+        expect_revert(error_message="friendly fire is not permitted in the empire")
+    %}
+    initiate_combat(
+        attacking_army_id=ATTACKING_ARMY_ID,
+        attacking_realm_id=Uint256(ATTACKING_REALM_ID, 0),
+        defending_army_id=DEFENDING_ARMY_ID,
+        defending_realm_id=Uint256(DEFENDING_REALM_ID, 0),
+    );
+    return ();
+}
+
+@external
+func test_initiate_combat{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
+    %{
+        start_prank(ids.EMPEROR) 
+        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
+        store(context.self_address, "realms", [context.account, 1, 0, 0], key=[ids.ATTACKING_REALM_ID])
+        resources_increment = [ids.AMOUNT_WOOD,
+                    ids.AMOUNT_STONE,
+                    ids.AMOUNT_COAL,
+                    ids.AMOUNT_COPPER ,
+                    ids.AMOUNT_OBSIDIAN ,
+                    ids.AMOUNT_SILVER ,
+                    ids.AMOUNT_IRONWOOD,
+                    ids.AMOUNT_COLD_IRON,
+                    ids.AMOUNT_GOLD,
+                    ids.AMOUNT_HARTWOOD,
+                    ids.AMOUNT_DIAMONDS,
+                    ids.AMOUNT_SAPPHIRE,
+                    ids.AMOUNT_RUBY,
+                    ids.AMOUNT_DEEP_CRYSTAL,
+                    ids.AMOUNT_IGNIUM,
+                    ids.AMOUNT_ETHEREAL_SILICA,
+                    ids.AMOUNT_TRUE_ICE,
+                    ids.AMOUNT_TWILIGHT_QUARTZ,
+                    ids.AMOUNT_ALCHEMICAL_SILVER,
+                    ids.AMOUNT_ADAMANTINE,
+                    ids.AMOUNT_MITHRAL,
+                    ids.AMOUNT_DRAGONHIDE]
+        pre_resources = []
+        for i in range(22):
+            pre_resources.append(load(context.erc1155_contract_address, "ERC1155_balances", "Uint256", key=[i+1, 0, context.self_address])[0])
+    %}
+    initiate_combat(
+        attacking_army_id=ATTACKING_ARMY_ID,
+        attacking_realm_id=Uint256(ATTACKING_REALM_ID, 0),
+        defending_army_id=DEFENDING_ARMY_ID,
+        defending_realm_id=Uint256(DEFENDING_REALM_ID, 0),
+    );
+    %{
+        for i in range(22):
+            post_resource_empire = load(context.erc1155_contract_address, "ERC1155_balances", "Uint256", key=[i+1, 0, context.self_address])[0]
+            post_resource_account = load(context.erc1155_contract_address, "ERC1155_balances", "Uint256", key=[i+1, 0, context.account])[0]
+            diff = (100 - ids.ATTACKER_TAXES) * resources_increment[i] // 100
             assert post_resource_empire == pre_resources[i] + resources_increment[i] - diff, f'post resource empire {i} error, expected {pre_resources[i] + resources_increment[i] - diff}, got {post_resource_empire}'
             assert post_resource_account == diff, f'post resource account {i} error, expected {diff}, got {post_resource_account}'
     %}
