@@ -78,6 +78,20 @@ func convert_food_tokens_to_store{
     return ();
 }
 
+@external
+func build_army_from_battalions{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(
+    realm_id: Uint256,
+    army_id: felt,
+    battalion_ids_len: felt,
+    battalion_ids: felt*,
+    battalion_quantity_len: felt,
+    battalion_quantity: felt*,
+) {
+    return ();
+}
+
 // @notice Mocks the call to harvest food module
 // @param token_id The staked Realm id (S_Realm)
 // @param harvest_type The harvest type is either export or store. Export mints tokens, store keeps on the realm as food

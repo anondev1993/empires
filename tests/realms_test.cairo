@@ -12,6 +12,7 @@ from contracts.empires.realms import (
     build,
     create,
     convert_food_tokens_to_store,
+    build_army_from_battalions,
 )
 from contracts.empires.helpers import get_resources, get_owners, get_resources_refund
 from Realms.realms import (
@@ -444,5 +445,28 @@ func test_convert_food_tokens_to_store_not_exiting{
         expect_revert(error_message="realm exiting the empire")
     %}
     convert_food_tokens_to_store(token_id=Uint256(REALM_ID, 0), quantity=1, resource_id=2);
+    return ();
+}
+
+@external
+func test_build_army_from_battalions_not_exiting{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
+    %{
+        start_prank(ids.EMPEROR) 
+        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
+        store(context.self_address, "realms", [context.account, 1, 1, 0], key=[ids.REALM_ID])
+        expect_revert(error_message="realm exiting the empire")
+    %}
+    let (battalion_ids: felt*) = alloc();
+    let (battalion_quantity: felt*) = alloc();
+    build_army_from_battalions(
+        realm_id=Uint256(REALM_ID, 0),
+        army_id=ATTACKING_ARMY_ID,
+        battalion_ids_len=0,
+        battalion_ids=battalion_ids,
+        battalion_quantity_len=0,
+        battalion_quantity=battalion_quantity,
+    );
     return ();
 }
