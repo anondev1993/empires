@@ -16,7 +16,6 @@ from contracts.empires.realms import (
     harvest,
     convert_food_tokens_to_store,
     claim_resources,
-    pillage_resources,
     travel,
     build_army_from_battalions,
     initiate_combat,
@@ -49,6 +48,7 @@ from contracts.empires.storage import (
     realms_count,
     realm_contract,
     stacked_realm_contract,
+    erc1155_contract,
     lords_contract,
     building_module,
     food_module,
@@ -77,6 +77,7 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     emperor: felt,
     realm_contract_address: felt,
     stacked_realm_contract_address: felt,
+    erc1155_contract_address: felt,
     building_module_: felt,
     food_module_: felt,
     goblin_town_module_: felt,
@@ -95,6 +96,7 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     Ownable.initializer(emperor);
     realm_contract.write(realm_contract_address);
     stacked_realm_contract.write(stacked_realm_contract_address);
+    erc1155_contract.write(erc1155_contract_address);
     building_module.write(building_module_);
     food_module.write(food_module_);
     goblin_town_module.write(goblin_town_module_);

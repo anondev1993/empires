@@ -65,6 +65,10 @@ func stacked_realm_contract() -> (address: felt) {
 }
 
 @storage_var
+func erc1155_contract() -> (address: felt) {
+}
+
+@storage_var
 func lords_contract() -> (address: felt) {
 }
 
