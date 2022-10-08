@@ -6,7 +6,7 @@ from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.alloc import alloc
 
 from contracts.empires.realms import harvest
-from contracts.empires.helpers import get_resources, get_owners
+from contracts.empires.helpers import get_resources, get_owners, get_resources_diff
 from Realms.realms import AMOUNT_FISH, AMOUNT_WHEAT
 from contracts.settling_game.utils.game_structs import ResourceIds
 from contracts.settling_game.interfaces.IERC1155 import IERC1155
@@ -58,6 +58,39 @@ func test_resources_arr{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     %{
         for i in range(22):
             assert i+1 == memory[ids.resources + i]
+    %}
+    return ();
+}
+
+@external
+func test_diff_resources{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+    let (post_resources: Uint256*) = alloc();
+    let (pre_resources: Uint256*) = alloc();
+    let (local diff_resources: Uint256*) = alloc();
+    let (resources) = get_resources();
+    %{
+        from random import randint
+        diffs = []
+        for i in range(22):
+            pre = randint(1, 100000)
+            add = randint(1, 100000)
+            memory[ids.pre_resources._reference_value + 2*i] = pre
+            memory[ids.pre_resources._reference_value + 2*i + 1] = 0
+            memory[ids.post_resources._reference_value + 2*i] = pre + add
+            memory[ids.post_resources._reference_value + 2*i + 1] = 0
+            diffs.append(add)
+    %}
+    get_resources_diff(
+        len=22,
+        post_resources=post_resources,
+        pre_resources=pre_resources,
+        diff_resources=diff_resources,
+    );
+    %{
+        for i in range(22):
+            diff = memory[ids.diff_resources._reference_value + 2*i]
+            assert diff == diffs[i], f'difference error, expected {diffs[i]}, got {diff}'
     %}
     return ();
 }
