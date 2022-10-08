@@ -48,6 +48,7 @@ from contracts.empires.storage import (
     lords,
     realms_count,
     realm_contract,
+    stacked_realm_contract,
     lords_contract,
     building_module,
     food_module,
@@ -75,6 +76,7 @@ from src.openzeppelin.access.ownable.library import Ownable
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     emperor: felt,
     realm_contract_address: felt,
+    stacked_realm_contract_address: felt,
     building_module_: felt,
     food_module_: felt,
     goblin_town_module_: felt,
@@ -92,6 +94,7 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 ) {
     Ownable.initializer(emperor);
     realm_contract.write(realm_contract_address);
+    stacked_realm_contract.write(stacked_realm_contract_address);
     building_module.write(building_module_);
     food_module.write(food_module_);
     goblin_town_module.write(goblin_town_module_);
@@ -124,7 +127,7 @@ func delegate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(r
     }
 
     let (empire) = get_contract_address();
-    let (realm_contract_address) = realm_contract.read();
+    let (realm_contract_address) = stacked_realm_contract.read();
 
     IERC721.transferFrom(
         contract_address=realm_contract_address,
@@ -193,7 +196,7 @@ func leave_empire{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     }
 
     let (empire) = get_contract_address();
-    let (realm_contract_address) = realm_contract.read();
+    let (realm_contract_address) = stacked_realm_contract.read();
 
     IERC721.transferFrom(
         contract_address=realm_contract_address,
@@ -249,7 +252,7 @@ func add_empire_enemy{
         assert_not_zero(realm.annexation_date);
     }
 
-    let (local realm_contract_address) = realm_contract.read();
+    let (local realm_contract_address) = stacked_realm_contract.read();
 
     // hash calldata
     tempvar calldata_arr: felt* = new (1, realm_contract_address, INITIATE_COMBAT_SELECTOR, 0, 6, 6, attacking_army_id, attacking_realm_id, 0, defending_army_id, defending_realm_id, 0, nonce, 13);
@@ -307,7 +310,7 @@ func hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
     let (caller) = get_caller_address();
     let (empire) = get_contract_address();
-    let (local realm_contract_address) = realm_contract.read();
+    let (local realm_contract_address) = stacked_realm_contract.read();
     let (lords_contract_address) = lords_contract.read();
 
     // temporarily transfer the command of the armies of the mercenary to the empire
