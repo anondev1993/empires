@@ -4,6 +4,8 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.starknet.common.syscalls import get_contract_address
 from starkware.cairo.common.registers import get_label_location
 from starkware.cairo.common.alloc import alloc
+from starkware.cairo.common.uint256 import Uint256
+from src.openzeppelin.security.safemath.library import SafeUint256
 
 func get_resources{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     resources: felt*
@@ -64,4 +66,21 @@ func get_owners{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     assert [owners + 20] = empire;
     assert [owners + 21] = empire;
     return (owners=owners);
+}
+
+func get_resources_diff{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    len: felt, post_resources: Uint256*, pre_resources: Uint256*, diff_resources: Uint256*
+) {
+    if (len == 0) {
+        return ();
+    }
+    let (diff: Uint256) = SafeUint256.sub_le([post_resources], [pre_resources]);
+    assert [diff_resources] = diff;
+    get_resources_diff(
+        len=len - 1,
+        post_resources=post_resources + Uint256.SIZE,
+        pre_resources=pre_resources + Uint256.SIZE,
+        diff_resources=diff_resources + Uint256.SIZE,
+    );
+    return ();
 }
