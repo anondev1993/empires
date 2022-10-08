@@ -8,6 +8,7 @@ from starkware.starknet.common.syscalls import get_block_timestamp, get_contract
 from starkware.cairo.common.uint256 import Uint256
 
 from contracts.interfaces.realms import IBuildings, IFood, IResources, ITravel, ICombat
+from contracts.empires.constants import FOOD_LENGTH, RESOURCES_LENGTH
 from contracts.empires.storage import (
     realms,
     erc1155_contract,
@@ -19,9 +20,10 @@ from contracts.empires.storage import (
     combat_module,
     producer_taxes,
 )
-from contracts.settling_game.utils.game_structs import HarvestType
+from contracts.empires.helpers import get_resources, get_owners, get_resources_refund
 from contracts.empires.modifiers import Modifier
 from contracts.empires.structures import Realm
+from contracts.settling_game.utils.game_structs import HarvestType
 from contracts.settling_game.utils.constants import CCombat
 from contracts.settling_game.utils.game_structs import ResourceIds
 from contracts.settling_game.interfaces.IERC1155 import IERC1155
@@ -106,18 +108,18 @@ func harvest{
 
     let (local pre_balance_len, local pre_balance) = IERC1155.balanceOfBatch(
         contract_address=resources_address,
-        owners_len=2,
+        owners_len=FOOD_LENGTH,
         owners=owners,
-        tokens_id_len=2,
+        tokens_id_len=FOOD_LENGTH,
         tokens_id=token_ids,
     );
     with_attr error_message("food balance length error") {
-        assert pre_balance_len = 2;
+        assert pre_balance_len = FOOD_LENGTH;
     }
 
     // harvest for the realm_id
-    let (food_module_) = food_module.read();
     // force to mint tokens in order to collect the tax
+    let (food_module_) = food_module.read();
     IFood.harvest(
         contract_address=food_module_,
         token_id=token_id,
@@ -128,17 +130,16 @@ func harvest{
     // recall balanceOfBatch to retrieve increase in resources
     let (local post_balance_len, local post_balance) = IERC1155.balanceOfBatch(
         contract_address=resources_address,
-        owners_len=2,
+        owners_len=FOOD_LENGTH,
         owners=owners,
-        tokens_id_len=2,
+        tokens_id_len=FOOD_LENGTH,
         tokens_id=token_ids,
     );
     with_attr error_message("food balance length error") {
-        assert post_balance_len = 2;
+        assert post_balance_len = FOOD_LENGTH;
     }
 
     // calculate resources increase and send to user diff * (100 - tax) // 100
-    let (realm: Realm) = realms.read(token_id.low);
     let (amounts: Uint256*) = alloc();
     let (data: felt*) = alloc();
     assert data[0] = 0;
@@ -153,13 +154,14 @@ func harvest{
     assert [amounts + Uint256.SIZE] = Uint256(realm_fish, 0);
 
     // send excess resources back to user
+    let (realm: Realm) = realms.read(token_id.low);
     IERC1155.safeBatchTransferFrom(
         contract_address=resources_address,
         _from=empire_address,
         to=realm.lord,
-        ids_len=2,
+        ids_len=FOOD_LENGTH,
         ids=token_ids,
-        amounts_len=2,
+        amounts_len=FOOD_LENGTH,
         amounts=amounts,
         data_len=1,
         data=data,
@@ -194,12 +196,69 @@ func convert_food_tokens_to_store{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 func claim_resources{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     token_id: Uint256
 ) {
+    alloc_locals;
     Ownable.assert_only_owner();
     Modifier.assert_part_of_empire(realm_id=token_id.low);
 
+    // prepare the call to balanceOfBatch
+    let (resources_address) = erc1155_contract.read();
+    let (owners: felt*) = get_owners();
+    let (token_ids: Uint256*) = get_resources();
+
+    let (local pre_balance_len, local pre_balance) = IERC1155.balanceOfBatch(
+        contract_address=resources_address,
+        owners_len=RESOURCES_LENGTH,
+        owners=owners,
+        tokens_id_len=RESOURCES_LENGTH,
+        tokens_id=token_ids,
+    );
+    with_attr error_message("resources balance length error") {
+        assert pre_balance_len = RESOURCES_LENGTH;
+    }
+
+    // claim the resources
     let (resource_module_) = resource_module.read();
     IResources.claim_resources(contract_address=resource_module_, token_id=token_id);
-    // TODO add the taxes
+
+    // recall balanceOfBatch to retrieve increase in resources
+    let (local post_balance_len, local post_balance) = IERC1155.balanceOfBatch(
+        contract_address=resources_address,
+        owners_len=RESOURCES_LENGTH,
+        owners=owners,
+        tokens_id_len=RESOURCES_LENGTH,
+        tokens_id=token_ids,
+    );
+    with_attr error_message("resources balance length error") {
+        assert pre_balance_len = RESOURCES_LENGTH;
+    }
+
+    // calculate the taxable amount of resources
+    let (local refund_resources: Uint256*) = alloc();
+    let (producer_taxes_) = producer_taxes.read();
+    get_resources_refund(
+        len=RESOURCES_LENGTH,
+        post_resources=post_balance,
+        pre_resources=pre_balance,
+        diff_resources=refund_resources,
+        tax=producer_taxes_,
+    );
+
+    // send excess resources back to user
+    let (empire_address) = get_contract_address();
+    let (realm: Realm) = realms.read(token_id.low);
+    let (data: felt*) = alloc();
+    assert data[0] = 0;
+    IERC1155.safeBatchTransferFrom(
+        contract_address=resources_address,
+        _from=empire_address,
+        to=realm.lord,
+        ids_len=RESOURCES_LENGTH,
+        ids=token_ids,
+        amounts_len=RESOURCES_LENGTH,
+        amounts=refund_resources,
+        data_len=1,
+        data=data,
+    );
     return ();
 }
 
