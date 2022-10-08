@@ -1,6 +1,7 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.math import unsigned_div_rem
 from starkware.starknet.common.syscalls import get_contract_address
 from starkware.cairo.common.registers import get_label_location
 from starkware.cairo.common.alloc import alloc
@@ -90,19 +91,25 @@ func get_owners{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     return (owners=owners);
 }
 
-func get_resources_diff{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    len: felt, post_resources: Uint256*, pre_resources: Uint256*, diff_resources: Uint256*
+func get_resources_refund{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    len: felt,
+    post_resources: Uint256*,
+    pre_resources: Uint256*,
+    diff_resources: Uint256*,
+    tax: felt,
 ) {
     if (len == 0) {
         return ();
     }
     let (diff: Uint256) = SafeUint256.sub_le([post_resources], [pre_resources]);
-    assert [diff_resources] = diff;
-    get_resources_diff(
+    let (refund_resources, _) = unsigned_div_rem((100 - tax) * diff.low, 100);
+    assert [diff_resources] = Uint256(refund_resources, 0);
+    get_resources_refund(
         len=len - 1,
         post_resources=post_resources + Uint256.SIZE,
         pre_resources=pre_resources + Uint256.SIZE,
         diff_resources=diff_resources + Uint256.SIZE,
+        tax=tax,
     );
     return ();
 }
