@@ -409,7 +409,7 @@ func setup_hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         from random import randint
         context.amount_bounty = 100;
 
-        context.combat_module = deploy_contract("./tests/Combat/Combat.cairo", [0]).contract_address
+        context.combat_module = deploy_contract("./tests/Realms/combat.cairo", [0]).contract_address
         store(context.self_address, "bounties", [context.amount_bounty], key=[ids.REALM_TARGET])
         store(context.self_address, "combat_module", [context.combat_module])
         ids.realm_contract_address = context.realm_contract_address
