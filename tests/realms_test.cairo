@@ -74,6 +74,19 @@ func test_owners_arr{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check
 }
 
 @external
+func test_harvest_not_empire{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
+    %{
+        start_prank(ids.ACCOUNT) 
+        store(context.self_address, "Ownable_owner", [ids.ACCOUNT])
+        expect_revert(error_message="realm not part of the empire")
+    %}
+    harvest(token_id=Uint256(1, 0), food_building_id=1);
+    return ();
+}
+
+@external
 func setup_harvest{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
     local address;
