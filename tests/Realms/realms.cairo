@@ -71,6 +71,13 @@ func create{
     return ();
 }
 
+@external
+func convert_food_tokens_to_store{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(token_id: Uint256, quantity: felt, resource_id: felt) {
+    return ();
+}
+
 // @notice Mocks the call to harvest food module
 // @param token_id The staked Realm id (S_Realm)
 // @param harvest_type The harvest type is either export or store. Export mints tokens, store keeps on the realm as food

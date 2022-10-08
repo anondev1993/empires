@@ -5,7 +5,14 @@ from starkware.starknet.common.syscalls import get_contract_address
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.alloc import alloc
 
-from contracts.empires.realms import harvest, claim_resources, initiate_combat, build, create
+from contracts.empires.realms import (
+    harvest,
+    claim_resources,
+    initiate_combat,
+    build,
+    create,
+    convert_food_tokens_to_store,
+)
 from contracts.empires.helpers import get_resources, get_owners, get_resources_refund
 from Realms.realms import (
     AMOUNT_FISH,
@@ -423,5 +430,19 @@ func test_create{
         realm = load(context.self_address, "realms", "Realm", key=[ids.REALM_ID])
         assert realm[3] == ids.BLOCK_TS + 24*3600, f'exiting date error, expected {ids.BLOCK_TS + 24*3600}, got {realm[3]}'
     %}
+    return ();
+}
+
+@external
+func test_convert_food_tokens_to_store_not_exiting{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
+    %{
+        start_prank(ids.EMPEROR) 
+        store(context.self_address, "Ownable_owner", [ids.EMPEROR])
+        store(context.self_address, "realms", [context.account, 1, 1, 0], key=[ids.REALM_ID])
+        expect_revert(error_message="realm exiting the empire")
+    %}
+    convert_food_tokens_to_store(token_id=Uint256(REALM_ID, 0), quantity=1, resource_id=2);
     return ();
 }
