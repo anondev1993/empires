@@ -14,10 +14,8 @@ from contracts.empires.storage import (
     voter_list_emperor,
     realms_count,
 )
-from contracts.empires.structures import Votes
+from contracts.empires.structures import Votes, Realm
 from src.openzeppelin.access.ownable.library import Ownable_owner
-
-// TODO: test these functions
 
 // @notice Starts a new emperor voting process
 // @param new_emperor The new proposed emperor
@@ -63,6 +61,7 @@ func propose_emperor_change{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     proposing_realm_id: felt, realm_id: felt, yes_or_no: felt
 ) {
+    alloc_locals;
     let (caller) = get_caller_address();
     let (realm: Realm) = realms.read(realm_id);
 
@@ -79,16 +78,21 @@ func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 
     let range_check_ptr = range_check_ptr + 2;
 
-    let (has_voted_emperor) = has_voted_emperor.read(proposing_realm_id, realm_id);
-    with_attr error_message("realm has already voted") {
-        assert has_voted_emperor = 0;
+    let (emperor) = emperor_candidate.read(proposing_realm_id);
+    with_attr error_message("proposed emperor is the zero address") {
+        assert_not_zero(emperor);
     }
 
-    let (votes: Votes) = voting_ledger_emperor.read(proposing_realm_id);
-    let (realms_count) = realms_count.read();
+    let (has_voted_emperor_) = has_voted_emperor.read(proposing_realm_id, realm_id);
+    with_attr error_message("realm has already voted") {
+        assert has_voted_emperor_ = 0;
+    }
+
+    let (local votes: Votes) = voting_ledger_emperor.read(proposing_realm_id);
+    let (realms_count_) = realms_count.read();
     if (yes_or_no == 0) {
-        let (no_pourcentage, _) = unsigned_div_rem((votes.no + 1) * 100, realms_count);
-        let (is_majority_no) = is_le(50, no_pourcentage);
+        let (no_pourcentage, _) = unsigned_div_rem((votes.no + 1) * 100, realms_count_);
+        let is_majority_no = is_le(50, no_pourcentage);
         if (is_majority_no == 1) {
             _reset_voting_emperor(
                 proposing_realm_id=proposing_realm_id, length=votes.yes + votes.no, index=0
@@ -98,21 +102,23 @@ func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
         voting_ledger_emperor.write(proposing_realm_id, Votes(votes.yes, votes.no + 1));
         has_voted_emperor.write(proposing_realm_id, realm_id, 1);
         voter_list_emperor.write(proposing_realm_id, votes.yes + votes.no, realm_id);
+        return ();
     }
     if (yes_or_no == 1) {
-        let (yes_pourcentage, _) = unsigned_div_rem((votes.yes + 1) * 100, realms_count);
-        let (is_majority_yes) = is_le(50, yes_pourcentage);
+        let (yes_pourcentage, _) = unsigned_div_rem((votes.yes + 1) * 100, realms_count_);
+        let is_majority_yes = is_le(50, yes_pourcentage);
         if (is_majority_yes == 1) {
             _reset_voting_emperor(
                 proposing_realm_id=proposing_realm_id, length=votes.yes + votes.no, index=0
             );
-            let (emperor_candidate) = emperor_candidate.read(proposing_realm_id);
-            Ownable.transfer_ownership(emperor_candidate);
+            let (emperor_candidate_) = emperor_candidate.read(proposing_realm_id);
+            Ownable.transfer_ownership(emperor_candidate_);
             return ();
         }
         voting_ledger_emperor.write(proposing_realm_id, Votes(votes.yes + 1, votes.no));
         has_voted_emperor.write(proposing_realm_id, realm_id, 1);
         voter_list_emperor.write(proposing_realm_id, votes.yes + votes.no, realm_id);
+        return ();
     }
     return ();
 }
@@ -125,7 +131,7 @@ func _reset_voting_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     proposing_realm_id: felt, length: felt, index: felt
 ) {
     if (length == index) {
-        voting_ledger_emperor.write(realm_id, Votes(0, 0));
+        voting_ledger_emperor.write(proposing_realm_id, Votes(0, 0));
         return ();
     }
     let (voting_realm_id) = voter_list_emperor.read(proposing_realm_id, index);

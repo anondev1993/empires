@@ -6,8 +6,6 @@ from starkware.starknet.common.syscalls import get_contract_address
 from starkware.cairo.common.pow import pow
 from starkware.cairo.common.alloc import alloc
 
-from contracts.utils.math import uint256_checked_sub_le
-
 from contracts.empires.internals import swap_lords_for_exact_eth
 
 @contract_interface

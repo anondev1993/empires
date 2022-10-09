@@ -55,7 +55,13 @@ const GOBLIN_TOWN_MODULE = FOOD_MODULE - 1;
 const RESOURCE_MODULE = GOBLIN_TOWN_MODULE - 1;
 const TRAVEL_MODULE = RESOURCE_MODULE - 1;
 const REALM_CONTRACT = 123;
+const S_REALM_CONTRACT = 122;
+const ERC1155_CONTRACT = 89471;
 const LORDS_CONTRACT = 123456789;
+const ETH_CONTRACT = 123456788;
+const ROUTER_CONTRACT = 123456787;
+const L1_EMPIRE_CONTRACT = 123456786;
+const TOKEN_BRIDGE_CONTRACT = 123456785;
 const BLOCK_TS = 100;
 
 @contract_interface
@@ -90,7 +96,7 @@ func __setup__{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         context.self_address = ids.address 
         context.lord_contract = deploy_contract("./tests/ERC20/ERC20Mintable.cairo", [0, 0, 6, ids.AMOUNT, 0, ids.address, ids.address]).contract_address
         context.realm_contract_address = deploy_contract("./tests/ERC721/ERC721MintableBurnable.cairo", [0, 0, ids.ACCOUNT]).contract_address
-        store(context.self_address, "realm_contract", [context.realm_contract_address])
+        store(context.self_address, "stacked_realm_contract", [context.realm_contract_address])
         store(context.self_address, "lords_contract", [context.lord_contract])
         store(context.self_address, "Ownable_owner", [ids.EMPEROR])
     %}
@@ -107,23 +113,33 @@ func test_deploy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         goblin_taxes = randint(1, ids.TAX_PRECISION)
         # deploy the empire contract
         address = deploy_contract("./contracts/empire.cairo", 
-                    [ids.EMPEROR, ids.REALM_CONTRACT, ids.BUILDING_MODULE, ids.FOOD_MODULE,
+                    [ids.EMPEROR, ids.REALM_CONTRACT, ids.S_REALM_CONTRACT, ids.ERC1155_CONTRACT, ids.BUILDING_MODULE, ids.FOOD_MODULE,
                     ids.GOBLIN_TOWN_MODULE, ids.RESOURCE_MODULE, ids.TRAVEL_MODULE, ids.COMBAT_MODULE,
-                    ids.LORDS_CONTRACT, producer_taxes, attacker_taxes, goblin_taxes]).contract_address
+                    ids.LORDS_CONTRACT, ids.ETH_CONTRACT, ids.ROUTER_CONTRACT, ids.L1_EMPIRE_CONTRACT,
+                    ids.TOKEN_BRIDGE_CONTRACT, producer_taxes, attacker_taxes, goblin_taxes]).contract_address
         owner = load(address, "Ownable_owner", "felt")[0]
         add = load(address, "realm_contract", "felt")[0]
+        s_add = load(address, "stacked_realm_contract", "felt")[0]
+        erc1155 = load(address, "erc1155_contract", "felt")[0]
         building = load(address, "building_module", "felt")[0]
         food = load(address, "food_module", "felt")[0]
         goblin_town = load(address, "goblin_town_module", "felt")[0]
         resource = load(address, "resource_module", "felt")[0]
         travel = load(address, "travel_module", "felt")[0]
         combat = load(address, "combat_module", "felt")[0]
+        lords = load(address, "lords_contract", "felt")[0]
+        eth = load(address, "eth_contract", "felt")[0]
+        router = load(address, "router_contract", "felt")[0]
+        l1 = load(address, "l1_empire_contract", "felt")[0]
+        bridge = load(address, "token_bridge_contract", "felt")[0]
         p_taxes = load(address, "producer_taxes", "felt")[0]
         a_taxes = load(address, "attacker_taxes", "felt")[0]
         g_taxes = load(address, "goblin_taxes", "felt")[0]
         # check contract contains deployed information
         assert owner == ids.EMPEROR, f'contract emperor error, expected {ids.EMPEROR}, got {owner}'
         assert add == ids.REALM_CONTRACT, f'contract address error, expected {ids.REALM_CONTRACT}, got {add}'
+        assert s_add == ids.S_REALM_CONTRACT, f'stacked contract address error, expected {ids.S_REALM_CONTRACT}, got {s_add}'
+        assert erc1155 == ids.ERC1155_CONTRACT, f'erc1155 contract address error, expected {ids.ERC1155_CONTRACT}, got {erc1155}'
         assert p_taxes == producer_taxes, f'producer taxes error, expected {producer_taxes}, got {p_taxes}'
         assert a_taxes == attacker_taxes, f'attacker taxes error, expected {attacker_taxes}, got {a_taxes}'
         assert g_taxes == goblin_taxes, f'goblin town taxes error, expected {goblin_taxes}, got {g_taxes}'
@@ -133,6 +149,11 @@ func test_deploy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         assert resource == ids.RESOURCE_MODULE, f'resource module error, expected {ids.RESOURCE_MODULE}, got {resource}'
         assert travel == ids.TRAVEL_MODULE, f'travel module error, expected {ids.TRAVEL_MODULE}, got {travel}'
         assert combat == ids.COMBAT_MODULE, f'combat module error, expected {ids.COMBAT_MODULE}, got {combat}'
+        assert lords == ids.LORDS_CONTRACT, f'lords error, expected {ids.LORDS_CONTRACT}, got {lords}'
+        assert eth == ids.ETH_CONTRACT, f'eth error, expected {ids.ETH_CONTRACT}, got {eth}'
+        assert router == ids.ROUTER_CONTRACT, f'router error, expected {ids.ROUTER_CONTRACT}, got {router}'
+        assert l1 == ids.L1_EMPIRE_CONTRACT, f'l1 error, expected {ids.L1_EMPIRE_CONTRACT}, got {l1}'
+        assert bridge == ids.TOKEN_BRIDGE_CONTRACT, f'bridge error, expected {ids.TOKEN_BRIDGE_CONTRACT}, got {bridge}'
     %}
     return ();
 }
@@ -388,7 +409,7 @@ func setup_hire_mercenary{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         from random import randint
         context.amount_bounty = 100;
 
-        context.combat_module = deploy_contract("./tests/Combat/Combat.cairo", [0]).contract_address
+        context.combat_module = deploy_contract("./tests/Realms/combat.cairo", [0]).contract_address
         store(context.self_address, "bounties", [context.amount_bounty], key=[ids.REALM_TARGET])
         store(context.self_address, "combat_module", [context.combat_module])
         ids.realm_contract_address = context.realm_contract_address

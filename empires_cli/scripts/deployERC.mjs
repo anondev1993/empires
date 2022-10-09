@@ -1,10 +1,13 @@
+import fs from "fs";
+import { json } from "starknet";
+
 export async function deployERC721Realms(provider) {
     const compiled = json.parse(
         fs.readFileSync("./compiled/ERC20/ERC20Mintable.json").toString("ascii")
     );
 }
 
-export async function deployErc20Mintable(provider) {
+export async function deployErc20Mintable(provider, owner_address) {
     const compiled = json.parse(
         fs.readFileSync("./compiled/ERC20/ERC20Mintable.json").toString("ascii")
     );
@@ -21,12 +24,10 @@ export async function deployErc20Mintable(provider) {
             // original supply
             "38411331902790913116538",
             "0",
-            // recipient 0x14bd9618b34b1cb5c57feefbfcaa0acb9812e6ca7e3cf5a1cd86e1ad6c737b8
-            //TODO: change that to new account
-            "586326687173811284770377415536409798911599066310948070382172496299953698744",
-            // owner 0x14bd9618b34b1cb5c57feefbfcaa0acb9812e6ca7e3cf5a1cd86e1ad6c737b8
-            //TODO: change that to new account
-            "586326687173811284770377415536409798911599066310948070382172496299953698744",
+            // recipient
+            owner_address,
+            // owner
+            owner_address,
         ],
     });
     console.log(

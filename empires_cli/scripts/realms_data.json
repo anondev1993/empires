@@ -1,0 +1,50 @@
+[
+    {
+        "region": 4,
+        "cities": 21,
+        "harbours": 15,
+        "rivers": 36,
+        "resource_number": 1,
+        "resource_1": 3,
+        "resource_2": 0,
+        "resource_3": 0,
+        "resource_4": 0,
+        "resource_5": 0,
+        "resource_6": 0,
+        "resource_7": 0,
+        "wonder": 0,
+        "order": 5
+    },
+    {
+        "region": 2,
+        "cities": 11,
+        "harbours": 7,
+        "rivers": 27,
+        "resource_number": 4,
+        "resource_1": 1,
+        "resource_2": 2,
+        "resource_3": 3,
+        "resource_4": 6,
+        "resource_5": 0,
+        "resource_6": 0,
+        "resource_7": 0,
+        "wonder": 0,
+        "order": 14
+    },
+    {
+        "region": 2,
+        "cities": 21,
+        "harbours": 8,
+        "rivers": 30,
+        "resource_number": 1,
+        "resource_1": 3,
+        "resource_2": 0,
+        "resource_3": 0,
+        "resource_4": 0,
+        "resource_5": 0,
+        "resource_6": 0,
+        "resource_7": 0,
+        "wonder": 0,
+        "order": 11
+    }
+]
