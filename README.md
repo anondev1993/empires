@@ -1,5 +1,9 @@
 # Empires
 
+<p align="center">
+    <img src="imgs/empires.jpeg" width="70%" height="70%" alt="Prosper Empire">
+</p>
+
 Get ready to embark on a journey in the Realms Empires, the next step to strengthen your reaml.
 Get the synergy from multiple Realms working together under the direction of an Empire, linking
 together Producer Realms and Attacker Realms to create the perfect attack and defense. Enjoy a
