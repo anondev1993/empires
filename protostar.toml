@@ -5,16 +5,24 @@ protostar_version = "0.4.2"
 libs_path = "lib"
 
 ["protostar.contracts"]
-empire = [
-    "contracts/empire.cairo",
-    "./lib/JediSwap_git/contracts/Pair.cairo",
+#Calculator = [
+    #"./lib/realms_contracts_git/contracts/settling_game/modules/calculator/Calculator.cairo"
+#]
+#Empire = [
+    #"contracts/empire.cairo",
+#]
+#erc20 = [
+    #"./lib/cairo_contracts_git/src/openzeppelin/token/erc20/presets/ERC20Mintable.cairo"
+#]
+#s_erc721= [
+    #"./lib/realms_contracts_git/contracts/settling_game/tokens/S_Realms_ERC721_Mintable.cairo"
+#]
+realms_erc1155 = [
+    "./tests/Realms/token/Resources_ERC1155_Mintable_Burnable.cairo"
 ]
-erc20 = [
-    "./lib/cairo_contracts_git/src/openzeppelin/token/erc20/presets/ERC20Mintable.cairo"
-]
-s_erc721= [
-    "./lib/realms_contracts_git/contracts/settling_game/tokens/S_Realms_ERC721_Mintable.cairo"
-]
+#ModuleController = [
+    #"./lib/realms_contracts_git/contracts/settling_game/ModuleController.cairo"
+#]
 
 ["protostar.test"]
 cairo-path = [
@@ -26,4 +34,5 @@ cairo-path = [
 cairo-path = [
     "./tests/",
     "./lib/cairo_contracts_git/src",
+    "./lib/realms_contracts_git"
 ]

@@ -9,6 +9,7 @@ from starkware.starknet.common.syscalls import (
 )
 from starkware.cairo.common.signature import verify_ecdsa_signature
 from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_check
+from starkware.cairo.common.bool import TRUE, FALSE
 
 from contracts.empires.realms import (
     build,
@@ -72,6 +73,8 @@ from contracts.interfaces.realms import ICombat
 from contracts.interfaces.token_bridge import ITokenBridge
 from src.openzeppelin.access.ownable.library import Ownable
 
+const IACCOUNT_ID = 0xa66bd575;
+
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     emperor: felt,
@@ -112,6 +115,17 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     attacker_taxes.write(attacker_taxes_);
     goblin_taxes.write(goblin_taxes_);
     return ();
+}
+
+// TODO: implement proper function to support erc1155
+@view
+func supportsInterface{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    interface_id: felt
+) -> (success: felt) {
+    if (interface_id == IACCOUNT_ID) {
+        return (success=TRUE);
+    }
+    return (success=FALSE);
 }
 
 // @notice Delegates the realm to the empire

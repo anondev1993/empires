@@ -1,4 +1,5 @@
 build
 .idea/*
 empires_cli/node_modules
-
+empires_cli/addresses.json
+.prettierrc

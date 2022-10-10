@@ -1,3 +1,5 @@
+import { Account, ec } from "starknet";
+
 // deploy a new Account smart contract
 async function deployAccount(accountPubKey) {
     const compiledAccount = json.parse(
@@ -17,4 +19,14 @@ async function deployAccount(accountPubKey) {
     );
 
     return accountResponse.address;
+}
+
+export function getAccount(accountContract, provider) {
+    const starkKeyPair = ec.getKeyPair(accountContract.private_key);
+    const account = new Account(
+        provider,
+        accountContract.address,
+        starkKeyPair
+    );
+    return account;
 }
