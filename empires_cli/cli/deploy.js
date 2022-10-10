@@ -1,44 +1,35 @@
-import fs from "fs";
-import { Account, Provider, ec, json, Contract } from "starknet";
-import { modules } from "../config/modules.mjs";
-import { deployNoConstructorContract } from "../utils/deployment.mjs";
-import { getDeployedAddresses } from "../utils/getAddresses.mjs";
-import { deployErc20Mintable } from "./deployERC.mjs";
-import { pack_data } from "./utils.mjs";
-import realm_data from "./realms_data.json" assert { type: "json" };
-import { getAccount } from "../utils/account.mjs";
-import { Module } from "module";
-import {
+const fs = require("fs");
+const { Provider, json, Contract } = require("starknet");
+const { modules } = require("../data/modules.js");
+const { getDeployedAddresses } = require("../utils/getAddresses.js");
+const { packData } = require("../utils/packData.js");
+const { getAccount } = require("../utils/getAccount.js");
+const {
     getDeployedContractAddress,
     updateDeployedContractAddress,
-} from "../utils/deployedContracts.mjs";
+} = require("../utils/trackContracts.js");
+const { getProvider } = require("../utils/getProvider.js");
 
-// address of starknet-dev
-const options = { sequencer: { baseUrl: "http://localhost:5050" } };
-const provider = new Provider(options);
-
-// @notion deploys all the realms contracts + additional contracts needed
-// @params accountContracts List of addresses {address, private_key, public_key}
-async function deployRealmsContracts(accountContracts, provider) {
+// @notion deploys all the realms contracts needed to play the game
+// @param accountContracts List of addresses {address, private_key, public_key}
+// @param provider A starknetjs provider object containing network info
+async function deployRealmsContracts() {
+    const provider = getProvider();
+    const accountContracts = await getDeployedAddresses();
     // new Account object using the address retrieved from starknet-devnet
     const adminAccount = getAccount(accountContracts[0], provider);
 
     // /**
     //  * Deploys the lords ERC20 contract
     //  */
-    const erc20Address = await deployErc20Mintable(
-        provider,
-        adminAccount.address
-    );
+    const erc20Address = await deployErc20Mintable();
     updateDeployedContractAddress("erc20", erc20Address);
 
     // /**
-    //  * Deploys the Realms ERC721
+    //  * Deploys the Realms ERC721 Contract
     //  */
-
     const erc721Address = await deployNoConstructorContract(
-        "compiled/ERC721/RealmsERC721.json",
-        provider
+        "compiled/ERC721/RealmsERC721.json"
     );
 
     console.log("Initializing realms erc721 contract");
@@ -52,20 +43,6 @@ async function deployRealmsContracts(accountContracts, provider) {
         ],
     });
 
-    console.log("Minting a realm for the first 3 accounts");
-    for (let i = 1; i < 4; i++) {
-        await adminAccount.execute({
-            entrypoint: "mint",
-            contractAddress: erc721Address,
-            calldata: [accountContracts[i].address, i, 0],
-        });
-        await adminAccount.execute({
-            entrypoint: "set_realm_data",
-            contractAddress: erc721Address,
-            calldata: [i, 0, pack_data(realm_data[i - 1])],
-        });
-    }
-
     updateDeployedContractAddress("erc721", erc721Address);
 
     // /**
@@ -73,8 +50,7 @@ async function deployRealmsContracts(accountContracts, provider) {
     //  */
     console.log("Deploying erc1155 contract");
     const erc1155Address = await deployNoConstructorContract(
-        "compiled/ERC1155/realms_erc1155.json",
-        provider
+        "compiled/ERC1155/realms_erc1155.json"
     );
 
     updateDeployedContractAddress("erc1155", erc1155Address);
@@ -102,10 +78,10 @@ async function deployRealmsContracts(accountContracts, provider) {
             // treasury address
             adminAccount.address,
             // _s_realms_address
-            //TODO: deploy s erc721 realms
             getDeployedContractAddress("erc721"),
         ],
     });
+    //TODO: verify if wait .waitForTransaction is useful or not in our case
     await provider.waitForTransaction(response.transaction_hash);
     const controllerAddress = response.contract_address;
 
@@ -132,13 +108,11 @@ async function deployRealmsContracts(accountContracts, provider) {
      * Deploys each of the modules and then executes transaction to call initializer entrypoint
      */
 
+    console.log("Deploying and initializing all the needed modules contracts");
     // deploy modules
     for (const module of Object.values(modules)) {
         // deploys modules that don't need arguments in their constructor
-        const moduleAddress = await deployNoConstructorContract(
-            module["path"],
-            provider
-        );
+        const moduleAddress = await deployNoConstructorContract(module["path"]);
         // calls function initializer in each module contract
         const initalizerResponse = await adminAccount.execute({
             entrypoint: "initializer",
@@ -164,74 +138,46 @@ async function deployRealmsContracts(accountContracts, provider) {
         await provider.waitForTransaction(
             setModuleAddressResponse.transaction_hash
         );
+
+        // set write access to all modules to the ERC1155 resource contract
+        //TODO: test that it works
+        await adminAccount.execute({
+            entrypoint: "set_write_access",
+            contractAddress: getDeployedContractAddress("controller"),
+            calldata: [module["moduleId"], erc1155ModuleId],
+        });
     }
 
     /**
      * Add the owner address as a module to mint any amount of ressources
      */
 
-    console.log("Setup the accesses for the erc1155 module and the admin");
+    console.log("Setup the access control for ERC1155 Resources");
     const ownerModuleId = 2000;
     const erc1155ModuleId = 1004;
 
-    const setModuleAddressResponse1 = await adminAccount.execute({
+    await adminAccount.execute({
         entrypoint: "set_address_for_module_id",
         contractAddress: getDeployedContractAddress("controller"),
         calldata: [erc1155ModuleId, getDeployedContractAddress("erc1155")],
     });
 
-    await provider.waitForTransaction(
-        setModuleAddressResponse1.transaction_hash
-    );
-
-    const setModuleAddressResponse2 = await adminAccount.execute({
+    await adminAccount.execute({
         entrypoint: "set_address_for_module_id",
         contractAddress: getDeployedContractAddress("controller"),
         calldata: [ownerModuleId, adminAccount.address],
     });
-    await provider.waitForTransaction(
-        setModuleAddressResponse2.transaction_hash
-    );
 
     await adminAccount.execute({
         entrypoint: "set_write_access",
         contractAddress: getDeployedContractAddress("controller"),
         calldata: [ownerModuleId, erc1155ModuleId],
     });
-    await provider.waitForTransaction(setWriteAccessResponse.transaction_hash);
-
-    console.log("Buidling a house for a user");
-    const userAccount1 = getAccount(accountContracts[1], provider);
-    await userAccount1.execute({
-        entrypoint: "build",
-        contractAddress: getDeployedContractAddress("buildings"),
-        // tokenid 1 (uint256), buildingid 1 (house), quantity 1
-        calldata: [1, 0, 1, 1],
-    });
 }
 
-async function batchMintResourcesUsers(accountContracts, userList) {
-    console.log("Batch minting resources for all three accounts");
-    for (const i of userList) {
-        let _ids = Array.from(Array(44), (_, index) =>
-            index % 2 == 0 ? index / 2 + 1 : 0
-        );
-        let ids = _ids.concat([10000, 0, 10001, 0]);
-        let amounts = Array.from(Array(48), (_, index) =>
-            index % 2 == 0 ? BigInt(100000 * 10 ** 18) : BigInt(0)
-        );
-        let t = ids.concat([24], amounts, [1, 0]);
-        let calldata = [accountContracts[i].address, 24].concat(t);
-        await adminAccount.execute({
-            entrypoint: "mintBatch",
-            contractAddress: getDeployedContractAddress("erc1155"),
-            calldata: calldata,
-        });
-    }
-}
-
-async function deployEmpire(accountContracts) {
-    console.log("Deploying Empires contract");
+async function deployEmpire() {
+    const provider = getProvider();
+    const accountContracts = await getDeployedAddresses();
     const compiled = json.parse(
         fs.readFileSync("compiled/Empire.json").toString("ascii")
     );
@@ -267,75 +213,60 @@ async function deployEmpire(accountContracts) {
     updateDeployedContractAddress("empire", response.contract_address);
 }
 
-async function batchMintResourcesEmpire(accountContracts) {
-    const adminAccount = getAccount(accountContracts[0], provider);
+async function deployErc20Mintable() {
+    const provider = getProvider();
+    const accountContracts = await getDeployedAddresses();
+    const path = "./compiled/ERC20/ERC20Mintable.json";
+    console.log(`Deploying ${path} Contract`);
 
-    let _ids = Array.from(Array(44), (_, index) =>
-        index % 2 == 0 ? index / 2 + 1 : 0
-    );
-    let ids = _ids.concat([10000, 0, 10001, 0]);
-    let amounts = Array.from(Array(48), (_, index) =>
-        index % 2 == 0 ? BigInt(100000 * 10 ** 18) : BigInt(0)
-    );
-    let t = ids.concat([24], amounts, [1, 0]);
-    let calldata = [getDeployedContractAddress("empire"), 24].concat(t);
-    await adminAccount.execute({
-        entrypoint: "mintBatch",
-        contractAddress: getDeployedContractAddress("erc1155"),
-        calldata: calldata,
+    const compiled = json.parse(fs.readFileSync(path).toString("ascii"));
+
+    const response = await provider.deployContract({
+        contract: compiled,
+        constructorCalldata: [
+            //name
+            "298305742194",
+            // symbol
+            "4543560",
+            // decimals
+            "18",
+            // original supply
+            "38411331902790913116538",
+            "0",
+            // recipient
+            accountContracts[0].address,
+            // owner
+            accountContracts[0].address,
+        ],
     });
+
+    await provider.waitForTransaction(response.transaction_hash);
+
+    const address = response.contract_address;
+    return address;
 }
 
-async function joinTheEmpire(accountContracts, user, tokenId) {
-    const userAccount = getAccount(accountContracts[user], provider);
-
-    await userAccount.execute([
-        {
-            entrypoint: "approve",
-            contractAddress: getDeployedContractAddress("erc721"),
-            calldata: [getDeployedContractAddress("empire"), tokenId, 0],
-        },
-        {
-            entrypoint: "delegate",
-            contractAddress: getDeployedContractAddress("empire"),
-            calldata: [tokenId],
-        },
-    ]);
-}
-
-async function manageEmpire(userAddresses, entrypoint, calldata) {
-    const adminAccount = getAccount(userAddresses[0], provider);
-
-    await adminAccount.execute({
-        entrypoint: entrypoint,
-        contractAddress: getDeployedContractAddress("empire"),
-        calldata: calldata,
+// @notice Deploys a smart contract without constructor
+// @param provider Provider
+async function deployNoConstructorContract(path) {
+    const provider = getProvider();
+    console.log(`Deploying ${path} contract`);
+    const compiled = json.parse(fs.readFileSync(path).toString("ascii"));
+    const response = await provider.deployContract({
+        contract: compiled,
     });
-}
+    await provider.waitForTransaction(response.transaction_hash);
 
-async function readRealms(module, entrypoint, calldata) {
-    const compiled = json.parse(
-        fs.readFileSync(modules[module]["path"]).toString("ascii")
-    );
-
-    const contract = new Contract(
-        compiled.abi,
-        getDeployedContractAddress(module),
-        provider
-    );
-
-    const response = await contract.call(entrypoint, calldata);
-
-    console.log(response);
+    const address = response.contract_address;
+    return address;
 }
 
 async function main() {
-    const userAddresses = await getDeployedAddresses();
     // await deployRealmsContracts(userAddresses, provider);
     // await batchMintResourcesUsers(userAddresses, [1, 2, 3]);
     // await deployEmpire(userAddresses);
     // await batchMintResourcesEmpire(userAddresses);
-    // await joinTheEmpire(userAddresses);
+    // await joinTheEmpire(userAddresses, 1, 1);
     // await manageEmpire(userAddresses, "build", [1, 0, 1, 1]);
     // await readRealms("buildings", "get_effective_population_buildings", [
     //     [1, 0],
@@ -343,3 +274,14 @@ async function main() {
 }
 
 main();
+
+// console.log("Buidling a house for a user");
+// const userAccount1 = getAccount(accountContracts[1], provider);
+// await userAccount1.execute({
+//     entrypoint: "build",
+//     contractAddress: getDeployedContractAddress("buildings"),
+//     // tokenid 1 (uint256), buildingid 1 (house), quantity 1
+//     calldata: [1, 0, 1, 1],
+// });
+
+module.exports = { deployRealmsContracts, deployEmpire };

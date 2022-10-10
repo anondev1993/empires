@@ -1,4 +1,4 @@
-function pack_data(realm_data) {
+function packData(realm_data) {
     let data = BigInt(0);
 
     let regions = realm_data.region;
@@ -38,4 +38,4 @@ function pack_data(realm_data) {
     );
 }
 
-export { pack_data };
+module.exports = { packData };
