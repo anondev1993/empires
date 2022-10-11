@@ -17,6 +17,12 @@ cd empires_cli/
 npm install
 ```
 
+Install the [starknet-devnet tool](https://github.com/Shard-Labs/starknet-devnet).
+Open a second terminal and run the below in order to start the devnet:
+```
+starknet-devnet
+```
+
 ## Quickstart
 
 In order to facilitate the onboarding of anyone wanting to test the contracts, we have created a quickstart CLI which:
