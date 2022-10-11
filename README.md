@@ -70,6 +70,33 @@ Two voting systems have been implemented into the Empire contract: an Emperor vo
 -   Realms from the Empire can vote on the proposition.
 -   Once the proposal reaches at least 50%, it is executed: the Emperor is changed or the target Realm purchase is stored in order to be executed later.
 
+# Testing
+
+All the entrypoints of the Empires contract have either been tested in Protostar, in the CLI tool (more information [here](https://github.com/anondev1993/empires/tree/master/empires_cli)), or both.
+The tests can be ran using `protostar test tests/` (tested with protostar 0.4.2).
+
+| Entrypoint                   | Tested in Protostar | Tested in CLI |
+| ---------------------------- | ------------------- | ------------- |
+| build                        | ✅                  | ✅            |
+| create                       | ✅                  | ✅            |
+| harvest                      | ✅                  | ✅            |
+| convert_food_tokens_to_store | ✅                  | ❌            |
+| claim_resources              | ✅                  | ✅            |
+| travel                       | ✅                  | ❌            |
+| build_army_from_battalions   | ✅                  | ❌            |
+| initiate_combat              | ✅                  | ❌            |
+| delegate                     | ✅                  | ✅            |
+| start_release_period         | ✅                  | ✅            |
+| leave_empire                 | ✅                  | ✅            |
+| add_empire_enemy             | ✅                  | ❌            |
+| issue_bounty                 | ✅                  | ✅            |
+| hire_mercenary               | ✅                  | ❌            |
+| acquire_realm_l1             | ✅                  | ❌            |
+| propose_emperor_change       | ❌                  | ✅            |
+| vote_emperor                 | ❌                  | ✅            |
+| propose_realm_acquisition    | ✅                  | ❌            |
+| vote_acquisition             | ✅                  | ❌            |
+
 # Improvements
 
 Please see our [issues](https://github.com/anondev1993/empires/issues) for the current improvements that can be brought to the Empire contract.
