@@ -34,6 +34,10 @@ Empire = [
 #    "./lib/realms_contracts_git/contracts/settling_game/modules/resources/Resources.cairo"
 #]
 
+Food = [
+    "./lib/realms_contracts_git/contracts/settling_game/modules/food/Food.cairo"
+]
+
 ["protostar.test"]
 cairo-path = [
     "./tests/",
