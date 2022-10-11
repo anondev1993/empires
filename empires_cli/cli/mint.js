@@ -28,7 +28,6 @@ async function batchMintResourcesUsers(userList, amount) {
 }
 
 async function mintingRealm(user, tokenid) {
-    // console.log(`Minting a realm for user ${user}`);
     const provider = getProvider();
     const accountContracts = await getDeployedAddresses();
     const adminAccount = getAccount(accountContracts[0], provider);

@@ -1,8 +1,7 @@
 const fs = require("fs");
-const { Provider, json, Contract } = require("starknet");
+const { json } = require("starknet");
 const { modules } = require("../data/modules.js");
 const { getDeployedAddresses } = require("../utils/getAddresses.js");
-const { packData } = require("../utils/packData.js");
 const { getAccount } = require("../utils/getAccount.js");
 const {
     getDeployedContractAddress,
@@ -81,7 +80,6 @@ async function deployRealmsContracts() {
             getDeployedContractAddress("erc721"),
         ],
     });
-    //TODO: verify if wait .waitForTransaction is useful or not in our case
     await provider.waitForTransaction(response.transaction_hash);
     const controllerAddress = response.contract_address;
 
@@ -143,7 +141,6 @@ async function deployRealmsContracts() {
         );
 
         // set write access to all modules to the ERC1155 resource contract
-        //TODO: test that it works
         await adminAccount.execute({
             entrypoint: "set_write_access",
             contractAddress: getDeployedContractAddress("controller"),
@@ -244,8 +241,7 @@ async function deployErc20Mintable() {
 
     await provider.waitForTransaction(response.transaction_hash);
 
-    const address = response.contract_address;
-    return address;
+    return response.contract_address;
 }
 
 // @notice Deploys a smart contract without constructor
@@ -259,31 +255,7 @@ async function deployNoConstructorContract(path) {
     });
     await provider.waitForTransaction(response.transaction_hash);
 
-    const address = response.contract_address;
-    return address;
+    return response.contract_address;
 }
-
-async function main() {
-    // await deployRealmsContracts(userAddresses, provider);
-    // await batchMintResourcesUsers(userAddresses, [1, 2, 3]);
-    // await deployEmpire(userAddresses);
-    // await batchMintResourcesEmpire(userAddresses);
-    // await joinTheEmpire(userAddresses, 1, 1);
-    // await manageEmpire(userAddresses, "build", [1, 0, 1, 1]);
-    // await readRealms("buildings", "get_effective_population_buildings", [
-    //     [1, 0],
-    // ]);
-}
-
-main();
-
-// console.log("Buidling a house for a user");
-// const userAccount1 = getAccount(accountContracts[1], provider);
-// await userAccount1.execute({
-//     entrypoint: "build",
-//     contractAddress: getDeployedContractAddress("buildings"),
-//     // tokenid 1 (uint256), buildingid 1 (house), quantity 1
-//     calldata: [1, 0, 1, 1],
-// });
 
 module.exports = { deployRealmsContracts, deployEmpire };
