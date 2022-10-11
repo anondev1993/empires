@@ -62,6 +62,12 @@ from contracts.empires.storage import (
     is_enemy,
     bounties,
     acquisition_candidate,
+    supportsInterface,
+    get_realms_count,
+    get_realm_data,
+    get_bounties,
+    get_emperor,
+    get_emperor_candidate,
 )
 from contracts.empires.structures import Realm, Acquisition
 from contracts.settling_game.utils.constants import CCombat
