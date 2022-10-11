@@ -294,6 +294,11 @@ func issue_bounty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 ) {
     Ownable.assert_only_owner();
     _check_empire_funds(amount);
+    let (target) = realms.read(enemy_realm_id);
+    with_attr error_message("no bounty permitted on a realm from the empire") {
+        assert target.lord = 0;
+        assert target.annexation_date = 0;
+    }
     bounties.write(enemy_realm_id, amount);
     return ();
 }
