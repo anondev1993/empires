@@ -5,8 +5,10 @@ const {
     batchMintResourcesEmpire,
     batchMintResourcesUsers,
     mintingRealm,
+    mintLordsUser,
+    mintLordsEmpire,
 } = require("./cli/mint");
-const { ownerOf } = require("./cli/read");
+const { ownerOf, readEmpire, readRealms } = require("./cli/read");
 const { joinEmpire, manageEmpire } = require("./cli/write");
 const { advanceTime } = require("./utils/advanceTime");
 const { getUserAccounts, getAdminAccount } = require("./utils/getAccount");
@@ -68,13 +70,13 @@ program
     .action((amount, options) => {
         if (options.empire) {
             console.log(`Minting ${amount} of all resources for empire`);
-            batchMintResourcesEmpire();
+            batchMintResourcesEmpire(amount);
         } else {
             if (options.users) {
                 console.log(
                     `Minting ${amount} of all resources for users ${options["users"]}`
                 );
-                batchMintResourcesUsers(options["users"]);
+                batchMintResourcesUsers(options["users"], amount);
             }
         }
     });
@@ -92,6 +94,25 @@ program
             `Minting Realms NFTS for user ${options.user} with tokenid ${options.tokenid}`
         );
         mintingRealm(options.user, options.tokenid);
+    });
+
+program
+    .command("mint-lords")
+    .argument("<amount>", "an amount of lords to mint (in 10**18)")
+    .option("-e, --empire", "if you want to mint lords for the empire")
+    .option("-u, --user <user>", "if you want to mint lords for one user")
+    .action((amount, options) => {
+        if (options.empire) {
+            console.log(`Minting ${amount} of LORDS for empire`);
+            mintLordsEmpire(amount);
+        } else {
+            if (options.user) {
+                console.log(
+                    `Minting ${amount} of LORDS for users ${options["user"]}`
+                );
+                mintLordsUser(amount, options["user"]);
+            }
+        }
     });
 
 program
@@ -148,6 +169,20 @@ program
     });
 
 program
+    .command("read-empire")
+    .requiredOption(
+        "-e, --entrypoint <entrypoint>",
+        "The Empire function to call"
+    )
+    .option(
+        "-c, --calldata <calldata>",
+        "The arguments of the function as a string of a list (no space between elements)"
+    )
+    .action(({ entrypoint, calldata }) => {
+        readEmpire(entrypoint, JSON.parse(calldata));
+    });
+
+program
     .command("read-realms")
     .requiredOption(
         "-m, --module <module>",
@@ -162,9 +197,7 @@ program
         "The arguments of the function as a string of a list (no space between elements)"
     )
     .action(({ module, entrypoint, calldata }) => {
-        console.log(module);
-        console.log(entrypoint);
-        console.log(JSON.parse(calldata));
+        readRealms(module, entrypoint, JSON.parse(calldata));
     });
 
 program.parse(process.argv);

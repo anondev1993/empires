@@ -5,7 +5,7 @@ const { getProvider } = require("../utils/getProvider.js");
 const { packData } = require("../utils/packData.js");
 const { getDeployedContractAddress } = require("../utils/trackContracts.js");
 
-async function batchMintResourcesUsers(userList) {
+async function batchMintResourcesUsers(userList, amount) {
     const provider = getProvider();
     const accountContracts = await getDeployedAddresses();
     const adminAccount = getAccount(accountContracts[0], provider);
@@ -15,7 +15,7 @@ async function batchMintResourcesUsers(userList) {
         );
         let ids = _ids.concat([10000, 0, 10001, 0]);
         let amounts = Array.from(Array(48), (_, index) =>
-            index % 2 == 0 ? BigInt(100000 * 10 ** 18) : BigInt(0)
+            index % 2 == 0 ? BigInt(amount * 10 ** 18) : BigInt(0)
         );
         let t = ids.concat([24], amounts, [1, 0]);
         let calldata = [accountContracts[i].address, 24].concat(t);
@@ -47,7 +47,7 @@ async function mintingRealm(user, tokenid) {
     });
 }
 
-async function batchMintResourcesEmpire() {
+async function batchMintResourcesEmpire(amount) {
     const provider = getProvider();
     const accountContracts = await getDeployedAddresses();
     const adminAccount = getAccount(accountContracts[0], provider);
@@ -57,7 +57,7 @@ async function batchMintResourcesEmpire() {
     );
     let ids = _ids.concat([10000, 0, 10001, 0]);
     let amounts = Array.from(Array(48), (_, index) =>
-        index % 2 == 0 ? BigInt(100000 * 10 ** 18) : BigInt(0)
+        index % 2 == 0 ? BigInt(amount * 10 ** 18) : BigInt(0)
     );
     let t = ids.concat([24], amounts, [1, 0]);
     let calldata = [getDeployedContractAddress("empire"), 24].concat(t);
@@ -68,8 +68,38 @@ async function batchMintResourcesEmpire() {
     });
 }
 
+async function mintLordsUser(amount, user) {
+    const provider = getProvider();
+    const accountContracts = await getDeployedAddresses();
+    const adminAccount = getAccount(accountContracts[0], provider);
+    const calldata = [
+        accountContracts[user].address,
+        BigInt(amount * 10 ** 18),
+        0,
+    ];
+    await adminAccount.execute({
+        entrypoint: "mint",
+        contractAddress: getDeployedContractAddress("erc20"),
+        calldata: calldata,
+    });
+}
+async function mintLordsEmpire(amount) {
+    const provider = getProvider();
+    const accountContracts = await getDeployedAddresses();
+    const adminAccount = getAccount(accountContracts[0], provider);
+    const empireAddress = getDeployedContractAddress("empire");
+    const calldata = [empireAddress, BigInt(amount * 10 ** 18), 0];
+    await adminAccount.execute({
+        entrypoint: "mint",
+        contractAddress: getDeployedContractAddress("erc20"),
+        calldata: calldata,
+    });
+}
+
 module.exports = {
     batchMintResourcesEmpire,
     batchMintResourcesUsers,
     mintingRealm,
+    mintLordsEmpire,
+    mintLordsUser,
 };

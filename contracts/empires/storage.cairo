@@ -1,8 +1,16 @@
 %lang starknet
 
+from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 
 from contracts.empires.structures import Realm, Votes, Acquisition
+from contracts.empires.constants import IACCOUNT_ID
+
+from src.openzeppelin.access.ownable.library import Ownable
+
+// -----------------------------------
+// Storage
+// -----------------------------------
 
 @storage_var
 func eth_contract() -> (address: felt) {
@@ -125,4 +133,46 @@ func has_voted_acquisition(proposing_realm_id: felt, realm_id: felt) -> (voted: 
 
 @storage_var
 func voter_list_acquisition(proposing_realm_id: felt, index: felt) -> (realm_id: felt) {
+}
+
+// -----------------------------------
+// Views
+// -----------------------------------
+@view
+func supportsInterface{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    interface_id: felt
+) -> (success: felt) {
+    if (interface_id == IACCOUNT_ID) {
+        return (success=TRUE);
+    }
+    return (success=FALSE);
+}
+
+@view
+func get_realms_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    count: felt
+) {
+    return realms_count.read();
+}
+
+@view
+func get_bounties{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    realm_id: felt
+) -> (amount: felt) {
+    return bounties.read(realm_id);
+}
+
+@view
+func get_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    emperor: felt
+) {
+    let (emperor) = Ownable.owner();
+    return (emperor=emperor);
+}
+
+@view
+func get_emperor_candidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    proposing_realm_id: felt
+) -> (candidate: felt) {
+    return emperor_candidate.read(proposing_realm_id);
 }

@@ -108,6 +108,9 @@ async function deployRealmsContracts() {
      * Deploys each of the modules and then executes transaction to call initializer entrypoint
      */
 
+    // erc1155ModuleId needed to give write access to each of the modules
+    const erc1155ModuleId = 1004;
+
     console.log("Deploying and initializing all the needed modules contracts");
     // deploy modules
     for (const module of Object.values(modules)) {
@@ -154,7 +157,6 @@ async function deployRealmsContracts() {
 
     console.log("Setup the access control for ERC1155 Resources");
     const ownerModuleId = 2000;
-    const erc1155ModuleId = 1004;
 
     await adminAccount.execute({
         entrypoint: "set_address_for_module_id",

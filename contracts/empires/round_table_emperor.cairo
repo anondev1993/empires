@@ -112,7 +112,7 @@ func vote_emperor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
                 proposing_realm_id=proposing_realm_id, length=votes.yes + votes.no, index=0
             );
             let (emperor_candidate_) = emperor_candidate.read(proposing_realm_id);
-            Ownable.transfer_ownership(emperor_candidate_);
+            Ownable_owner.write(emperor_candidate_);
             return ();
         }
         voting_ledger_emperor.write(proposing_realm_id, Votes(votes.yes + 1, votes.no));

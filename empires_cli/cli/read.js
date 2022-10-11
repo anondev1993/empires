@@ -21,6 +21,23 @@ async function readRealms(module, entrypoint, calldata) {
     console.log(response);
 }
 
+async function readEmpire(entrypoint, calldata) {
+    const provider = getProvider();
+    const compiled = json.parse(
+        fs.readFileSync("compiled/Empire.json").toString("ascii")
+    );
+
+    const contract = new Contract(
+        compiled.abi,
+        getDeployedContractAddress("empire"),
+        provider
+    );
+
+    const response = await contract.call(entrypoint, calldata);
+
+    console.log(response);
+}
+
 async function ownerOf(tokenId) {
     const provider = getProvider();
     const compiled = json.parse(
@@ -37,4 +54,4 @@ async function ownerOf(tokenId) {
     console.log(response);
 }
 
-module.exports = { readRealms, ownerOf };
+module.exports = { readRealms, readEmpire, ownerOf };
