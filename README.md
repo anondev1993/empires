@@ -17,6 +17,8 @@ attacker type.
 Finally, have the power of an Empire protecting you, issuing bounties on the Empire's enemy and
 forcing nearby Realms to submission.
 
+Please head to [our slides](https://github.com/anondev1993/empires/blob/master/documentation/Empires.pdf) for a more detailed introduction and to youtube for our presentation.
+
 Realms is a on-chain eternal game developed by BibliothecaDAO. Visit [https://scroll.bibliothecadao.xyz/](https://scroll.bibliothecadao.xyz/) for more information on Realms.
 
 # Empires
