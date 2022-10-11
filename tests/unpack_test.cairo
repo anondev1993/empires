@@ -38,24 +38,6 @@ func test_fetch_realm_data{
     let (local resource_7) = unpack_data(data, 88, 255);
     let (local wonder) = unpack_data(data, 96, 255);
     let (local order) = unpack_data(data, 104, 255);
-
-    %{
-        print(ids.regions)
-        print(ids.cities)
-        print(ids.harbours)
-        print(ids.rivers)
-        print(ids.resource_number)
-        print(ids.resource_1)
-        print(ids.resource_2)
-        print(ids.resource_3)
-        print(ids.resource_4)
-        print(ids.resource_5)
-        print(ids.resource_6)
-        print(ids.resource_7)
-        print(ids.wonder)
-        print(ids.order)
-    %}
-
     return ();
 }
 
