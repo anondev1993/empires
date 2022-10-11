@@ -54,4 +54,29 @@ async function ownerOf(tokenId) {
     console.log(response);
 }
 
-module.exports = { readRealms, readEmpire, ownerOf };
+async function balanceOfBatch(owner) {
+    const provider = getProvider();
+    const compiled = json.parse(
+        fs
+            .readFileSync("compiled/ERC1155/realms_erc1155.json")
+            .toString("ascii")
+    );
+
+    const contract = new Contract(
+        compiled.abi,
+        getDeployedContractAddress("erc1155"),
+        provider
+    );
+
+    const owners = Array(24).fill(owner);
+    const _ids = Array.from(Array(22), (_, index) => [index + 1, 0]);
+    const ids = _ids.concat([
+        [10000, 0],
+        [10001, 0],
+    ]);
+    const response = await contract.balanceOfBatch(owners, ids);
+
+    console.log(response[0]);
+}
+
+module.exports = { readRealms, readEmpire, ownerOf, balanceOfBatch };
