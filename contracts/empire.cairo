@@ -64,6 +64,7 @@ from contracts.empires.storage import (
     acquisition_candidate,
     supportsInterface,
     get_realms_count,
+    get_realm_data,
     get_bounties,
     get_emperor,
     get_emperor_candidate,
