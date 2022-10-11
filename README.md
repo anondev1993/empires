@@ -25,7 +25,7 @@ Realms is a on-chain eternal game developed by BibliothecaDAO. Visit [https://sc
 
 ### Delegation
 
-In order to join an Empire, a lord will need to delegate the handling of his Realm to the Empire. Delegating your Realm does not mean that the Empire (or the Emperor) can transfer you Realm to another address, as the amount of actions the Emperor can perform is limited to the main functions of the Realms contracts.
+In order to join an Empire, a lord will need to delegate the handling of his Realm to the Empire. Delegating your Realm does not mean that the Empire (or the Emperor) can transfer you Realm to another address, as the amount of actions the Emperor can perform is limited to the main functions of the Realms contracts. The multi-call capability of Starknet's contract abstraction is leveraged in order to send a unique transaction, which will allow the user to both approve and delegate his Realm to the Empire.
 
 ### Primary mechanics
 
@@ -42,7 +42,7 @@ Example: Two realms are part of an Empire, and they both have opposing types of 
 
 The Empire does not only augment the resource production of the Realms member, it also increases the protection for these Realms using two mechanics: the bounty and the enemy of the Empire.
 
-**Bounty:** a bounty can be placed by the emperor on any Realm which isn’t part of the Empire. An outsider Realm can then claim the bounty by performing a successful attack on this targeted Realm, via the Empire contract. The bounty is transferred to this “mercenary” in the event of a winning outcome. This strategy allows the Empire to increase its reach of the Realms territory: in case the Empire wants to attack an enemy located far across the land, the Emperor could simply issue a bounty on this enemy and wait for other Realms to handle the hard work for him.
+**Bounty:** a bounty can be placed by the emperor on any Realm which isn’t part of the Empire. An outsider Realm can then claim the bounty by performing a successful attack on this targeted Realm, via the Empire contract. The bounty is transferred to this “mercenary” in the event of a winning outcome. This strategy allows the Empire to increase its reach of the Realms territory: in case the Empire wants to attack an enemy located far across the land, the Emperor could simply issue a bounty on this enemy and wait for other Realms to handle the hard work for him. Again, multi-call is used in order to allow a single transaction to both approve the Realm transfer and perform the attack on the enemy Realm.
 
 **Enemy of the Empire:** a Realm can be added as “Enemy of the Empire” by the Emperor in the event that this Realm attacked a Realm which is part of the Empire. In order to verify that this enemy as indeed attacked the Empire, the Emperor must provide the following values to the `add_enemy_empire` function:
 
